@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F6F3F1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14161C" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,6 +70,10 @@
 [hidden]{display:none!important}
 /* App shell: the page itself never scrolls, only .main does. iOS then has no reason to move the bottom tab bar. */
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+/* pinned to the screen: after the iPhone keyboard closes there is nothing left scrolled out of place */
+body{position:fixed;inset:0;width:100%}
+/* iPhone zooms into any field with text under 16px — keep every field at 16px */
+input,select,textarea{font-size:16px!important}
 html{background:var(--bg);-webkit-text-size-adjust:100%}
 body{display:flex;flex-direction:column;margin:0;background:var(--bg);color:var(--fg);font:400 15px/1.45 var(--font-body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
@@ -1048,6 +1052,10 @@ document.addEventListener('pointermove', (e) => {
   tip.style.left = x + 'px'; tip.style.top = e.clientY + 'px';
 });
 document.addEventListener('pointerleave', () => (tip.hidden = true));
+// iPhone: when the keyboard closes, put the page back where it belongs
+function resetViewport() { if (scrollX || scrollY) scrollTo(0, 0); }
+document.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement || !document.activeElement.matches('input,textarea,select')) resetViewport(); }, 80));
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (visualViewport.height >= innerHeight - 1) resetViewport(); });
 // refresh at midnight / when coming back to the app
 let lastDay = dkey(today());
 document.addEventListener('visibilitychange', () => {
