@@ -68,8 +68,10 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
+/* App shell: the page itself never scrolls, only .main does. iOS then has no reason to move the bottom tab bar. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 html{background:var(--bg);-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font:400 15px/1.45 var(--font-body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{display:flex;flex-direction:column;margin:0;background:var(--bg);color:var(--fg);font:400 15px/1.45 var(--font-body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
 button:disabled{cursor:default}
 input,select,textarea{font:inherit;color:inherit}
@@ -77,11 +79,11 @@ input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{margin:0;text-wrap:balance}
 
 /* ---------- shell ---------- */
-.app{display:flex;min-height:100dvh}
+.app{display:flex;flex:1;min-height:0}
 .side{display:none}
-.main{flex:1;min-width:0;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 92px)}
+.main{flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px 28px}
 .wrap{max-width:1180px;margin:0 auto}
-.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);
+.tabbar{position:relative;flex:none;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);
   background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-top:1px solid var(--line);padding:6px 4px calc(env(safe-area-inset-bottom,0px) + 6px)}
 .tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:12px;color:var(--muted);font-size:11px;font-weight:500}
@@ -89,7 +91,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .tab[aria-current="page"]{color:var(--accent)}
 @media (min-width:900px){
   .tabbar{display:none}
-  .side{display:flex;flex-direction:column;gap:4px;width:220px;flex:none;padding:24px 14px;border-right:1px solid var(--line);background:var(--card-2);position:sticky;top:0;height:100dvh}
+  .side{display:flex;flex-direction:column;gap:4px;width:220px;flex:none;padding:24px 14px;border-right:1px solid var(--line);background:var(--card-2);overflow-y:auto}
   .brand{font:700 18px/1 var(--font-display);padding:6px 12px 22px;letter-spacing:-.01em}
   .side .tab{flex-direction:row;gap:12px;padding:10px 12px;font-size:15px;justify-content:flex-start}
   .side .tab[aria-current="page"]{background:var(--blue-2)}
@@ -975,7 +977,7 @@ document.addEventListener('click', (e) => {
   if (a === 'close-scrim') { if (e.target === el) closeSheet(); return; }
   const formId = el.closest('form')?.dataset.id;
   switch (a) {
-    case 'nav': UI.view = el.dataset.v; try { sessionStorage.setItem('planner.view', UI.view); } catch (er) {} render(); scrollTo(0, 0); break;
+    case 'nav': UI.view = el.dataset.v; try { sessionStorage.setItem('planner.view', UI.view); } catch (er) {} render(); document.querySelector('.main').scrollTop = 0; break;
     case 'month': UI.month = new Date(UI.month.getFullYear(), UI.month.getMonth() + +el.dataset.d, 1); render(); break;
     case 'hd': toggleHabit(el.dataset.k, el.dataset.h); render(); break;
     case 'rb': toggleBlock(el.dataset.k, id); render(); break;
