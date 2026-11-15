@@ -22,7 +22,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   // The planner lives in its own folder with its own service worker: leave it alone.
-  if (url.origin === self.location.origin && url.pathname.includes('/planner/')) return;
+  if (url.origin === self.location.origin && /\/planner(\/|$)/.test(url.pathname)) return;
 
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate') {

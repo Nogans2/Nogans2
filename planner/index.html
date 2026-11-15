@@ -419,9 +419,14 @@ const UI = {
 try { const v = sessionStorage.getItem('planner.view'); if (v) UI.view = v; } catch (e) {}
 
 /* ================= domain ================= */
-const dailyHabits = () => D.habits.filter((h) => h.type === 'daily');
+// Items keep history: `from` = first day they count, `to` = first day they no longer count (set on delete).
+const alive = (x, k) => (!x.from || x.from <= k) && (!x.to || k < x.to);
+const aliveIn = (x, a, b) => (!x.from || x.from <= b) && (!x.to || x.to > a);
+const dailyHabits = (k) => D.habits.filter((h) => h.type === 'daily' && (k ? alive(h, k) : !h.to));
+const counts = (k) => k >= D.start && k <= dkey(today());
 const hDone = (k, id) => !!(D.hlog[k] && D.hlog[k][id]);
 function toggleHabit(k, id) {
+  if (/^\d/.test(k)) markStart(k);
   const o = D.hlog[k] || (D.hlog[k] = {});
   if (o[id]) delete o[id]; else o[id] = 1;
   if (!Object.keys(o).length) delete D.hlog[k];
@@ -429,19 +434,22 @@ function toggleHabit(k, id) {
 }
 const rDone = (k, id) => !!(D.rlog[k] && D.rlog[k][id]);
 function toggleBlock(k, id) {
+  markStart(k);
   const o = D.rlog[k] || (D.rlog[k] = {});
   if (o[id]) delete o[id]; else o[id] = 1;
   if (!Object.keys(o).length) delete D.rlog[k];
   save();
 }
-const blocksFor = (i) => (D.routine[i] || []).slice().sort((a, b) => a.time.localeCompare(b.time));
+// blocks of a weekday that apply on date k (or the current schedule when k is omitted)
+const blocksFor = (i, k) => (D.routine[i] || []).filter((b) => (k ? alive(b, k) : !b.to)).sort((a, b) => a.time.localeCompare(b.time));
+function markStart(k) { if (k < D.start) D.start = k; }
 
 /** Efficiency of one day: average of the parts that exist that day (habits, routine, tasks due). null = nothing to measure. */
 function dayParts(k) {
   const d = parse(k);
-  const hs = dailyHabits();
+  const hs = dailyHabits(k);
   const hd = hs.filter((h) => hDone(k, h.id)).length;
-  const bs = D.routine[wdi(d)] || [];
+  const bs = blocksFor(wdi(d), k);
   const bd = bs.filter((b) => rDone(k, b.id)).length;
   const ts = D.tasks.filter((t) => t.due === k);
   const td = ts.filter((t) => t.done).length;
@@ -538,7 +546,7 @@ function vOverview() {
   let streak = 0; for (let d = (sc != null && sc >= 80) ? t : addDays(t, -1); ; d = addDays(d, -1)) { const s = dayScore(dkey(d)); if (s != null && s >= 80) streak++; else break; }
 
   const active = D.tasks.filter((x) => !x.done).sort(taskSort).slice(0, 5);
-  const blocks = blocksFor(wdi(t));
+  const blocks = blocksFor(wdi(t), tk);
   const b = ensureBudget(mkey(t));
   const inc = sum(b.income, 'fact'), out = BUDGET_GROUPS.reduce((a, [g]) => a + sum(b[g], 'fact'), 0);
   const nowHM = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
@@ -649,44 +657,45 @@ function weeksOfMonth(y, m) {
 function vHabits() {
   const y = UI.month.getFullYear(), m = UI.month.getMonth(), n = dim(y, m);
   const tk = dkey(today());
-  const hs = dailyHabits();
   const weeks = weeksOfMonth(y, m);
   const keys = []; for (let i = 1; i <= n; i++) keys.push(dkey(new Date(y, m, i)));
-  const elapsed = keys.filter((k) => k <= tk).length;
+  const hs = D.habits.filter((h) => h.type === 'daily' && aliveIn(h, keys[0], keys[n - 1]));
+  const cnt = keys.filter(counts);
   let head1 = '<tr class="wk"><th class="nm" rowspan="2" scope="col">Привычка</th>';
   weeks.forEach((w, i) => (head1 += `<th colspan="${w.days.length}" class="${i % 2 ? 'alt' : ''}">${w.days.length >= 3 ? 'Неделя ' + (i + 1) : (i + 1)}</th>`));
   head1 += '<th class="tot" rowspan="2" scope="col">За месяц</th></tr>';
   let head2 = '<tr>';
   keys.forEach((k, i) => (head2 += `<th class="${k === tk ? 'today' : ''}" data-day="${k}">${WD[wdi(parse(k))]}<br>${i + 1}</th>`));
   head2 += '</tr>';
-  let body = '', totalDone = 0;
+  let body = '', totalDone = 0, possible = 0;
   hs.forEach((h) => {
     let row = `<tr><th class="nm" scope="row"><button data-act="habit-edit" data-id="${h.id}" title="${esc(h.name)}">${esc(h.emoji || '')} ${esc(h.name)}</button></th>`;
-    let done = 0;
+    let done = 0, poss = 0;
     keys.forEach((k) => {
-      const on = hDone(k, h.id); if (on && k <= tk) done++;
-      const fut = k > tk;
-      row += `<td class="${k === tk ? 'today' : ''}"><button class="cellbtn" data-act="hd" data-h="${h.id}" data-k="${k}" ${fut ? 'disabled' : ''} aria-label="${esc(h.name)}, ${fmtDate(k)}: ${on ? 'выполнено' : 'не выполнено'}">${cb(on)}</button></td>`;
+      const on = hDone(k, h.id);
+      if (counts(k) && alive(h, k)) { poss++; if (on) done++; }
+      const off = k > tk || !alive(h, k);
+      row += `<td class="${k === tk ? 'today' : ''}">${off && !on ? '' : `<button class="cellbtn" data-act="hd" data-h="${h.id}" data-k="${k}" ${off ? 'disabled' : ''} aria-label="${esc(h.name)}, ${fmtDate(k)}: ${on ? 'выполнено' : 'не выполнено'}">${cb(on)}</button>`}</td>`;
     });
-    totalDone += done;
-    row += `<td class="tot"><div class="tl"><span>${done}/${elapsed}</span><span>${pct(done, elapsed)}%</span></div><div class="bar"><i style="width:${pct(done, elapsed)}%"></i></div></td></tr>`;
+    totalDone += done; possible += poss;
+    row += `<td class="tot"><div class="tl"><span>${done}/${poss}</span><span>${pct(done, poss)}%</span></div><div class="bar"><i style="width:${pct(done, poss)}%"></i></div></td></tr>`;
     body += row;
   });
   let f1 = '<tr><th class="nm" scope="row">Выполнено</th>', f2 = '<tr><th class="nm" scope="row">Не выполнено</th>', f3 = '<tr><th class="nm" scope="row">Прогресс</th>';
   keys.forEach((k) => {
-    const fut = k > tk;
-    const d = hs.filter((h) => hDone(k, h.id)).length;
-    const p = pct(d, hs.length);
-    f1 += `<td class="${k === tk ? 'today' : ''}">${fut ? '' : d}</td>`;
-    f2 += `<td class="${k === tk ? 'today' : ''}">${fut ? '' : hs.length - d}</td>`;
-    f3 += `<td class="pct" style="${fut ? '' : `background:color-mix(in srgb,var(--s-one) ${Math.round(p * 0.45)}%,var(--card-2));color:${p > 60 ? 'var(--card)' : 'var(--fg)'}`}">${fut ? '' : p + '%'}</td>`;
+    const skip = !counts(k);
+    const ah = hs.filter((h) => alive(h, k));
+    const d = ah.filter((h) => hDone(k, h.id)).length;
+    const p = pct(d, ah.length);
+    f1 += `<td class="${k === tk ? 'today' : ''}">${skip ? '' : d}</td>`;
+    f2 += `<td class="${k === tk ? 'today' : ''}">${skip ? '' : ah.length - d}</td>`;
+    f3 += `<td class="pct" style="${skip ? '' : `background:color-mix(in srgb,var(--s-one) ${Math.round(p * 0.4)}%,var(--card-2))`}">${skip ? '' : p + '%'}</td>`;
   });
-  const possible = hs.length * elapsed;
   f1 += `<td class="tot" rowspan="3"><div class="tl"><span>${totalDone}/${possible}</span><span>${pct(totalDone, possible)}%</span></div><div class="bar"><i style="width:${pct(totalDone, possible)}%"></i></div></td></tr>`;
   f2 += '</tr>'; f3 += '</tr>';
 
   // weekly
-  const wh = D.habits.filter((h) => h.type === 'weekly');
+  const wh = D.habits.filter((h) => h.type === 'weekly' && aliveIn(h, keys[0], keys[n - 1]));
   let wt = `<table class="hg"><thead><tr class="wk"><th class="nm" scope="col">Привычка</th>${weeks.map((w, i) => `<th class="${i % 2 ? 'alt' : ''}">Нед. ${i + 1}</th>`).join('')}</tr><tr><th class="nm" style="background:var(--card-2)"></th>${weeks.map((w) => `<th>${w.days[0]}–${w.days[w.days.length - 1]}</th>`).join('')}</tr></thead><tbody>`;
   const curMon = dkey(monday(today()));
   wh.forEach((h) => {
@@ -696,7 +705,7 @@ function vHabits() {
   });
   wt += '</tbody></table>';
   // monthly
-  const mh = D.habits.filter((h) => h.type === 'monthly');
+  const mh = D.habits.filter((h) => h.type === 'monthly' && aliveIn(h, keys[0], keys[n - 1]));
   const mk = 'M:' + mkey(UI.month);
   const mFuture = mkey(UI.month) > mkey(today());
   const mDone = mh.filter((h) => hDone(mk, h.id)).length;
@@ -706,7 +715,7 @@ function vHabits() {
   <div class="grid g3" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
     <div class="card card-b stat"><div class="v">${totalDone} / ${possible}</div><div class="l">Прогресс за месяц</div><div class="bar" style="margin-top:8px"><i style="width:${pct(totalDone, possible)}%"></i></div></div>
     <div class="card card-b stat"><div class="v">${pct(totalDone, possible)}%</div><div class="l">Выполнение ежедневных</div></div>
-    <div class="card card-b stat"><div class="v">${hs.length ? bestHabit(hs, keys.filter((k) => k <= tk)) : '—'}</div><div class="l">Самая стабильная</div></div>
+    <div class="card card-b stat"><div class="v">${hs.length ? bestHabit(hs, cnt) : '—'}</div><div class="l">Самая стабильная</div></div>
   </div>
   <section class="card"><div class="card-h pink">${MONTHS[m]} — ежедневные привычки<button class="btn sm soft" data-act="habit-add" data-type="daily">${ICON.plus}Привычка</button></div>
     ${hs.length ? `<div class="hscroll" id="hscroll"><table class="hg"><thead>${head1}${head2}</thead><tbody>${body}</tbody><tfoot>${f1}${f2}${f3}</tfoot></table></div>` : '<div class="empty">Добавь первую привычку</div>'}
@@ -734,28 +743,29 @@ function scrollGridToToday() {
 
 /* ---------- routine ---------- */
 function blockRow(b, k, isNow) {
+  const day = wdi(parse(k));
   const fut = k > dkey(today());
   const on = rDone(k, b.id);
   return `<div class="li${on ? ' done' : ''}">
     <button data-act="rb" data-id="${b.id}" data-k="${k}" ${fut ? 'disabled' : ''} aria-label="${esc(b.title)}">${cb(on)}</button>
-    <button class="t" data-act="block-edit" data-id="${b.id}"><span class="n">${esc(b.emoji || '')} ${esc(b.title)}</span></button>
+    <button class="t" data-act="block-edit" data-id="${b.id}" data-day="${day}"><span class="n">${esc(b.emoji || '')} ${esc(b.title)}</span></button>
     <span class="time${isNow ? ' now' : ''}">${b.time}${b.end ? '–' + b.end : ''}</span></div>`;
 }
 function vRoutine() {
   const wk = UI.rWeek, tk = dkey(today());
   const date = addDays(wk, UI.rDay), k = dkey(date);
-  const blocks = blocksFor(UI.rDay);
+  const blocks = blocksFor(UI.rDay, k);
   const nowHM = `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
   const days = WD.map((w, i) => {
-    const d = addDays(wk, i), dk = dkey(d), bs = D.routine[i] || [];
+    const d = addDays(wk, i), dk = dkey(d), bs = blocksFor(i, dk);
     const dn = bs.filter((b) => rDone(dk, b.id)).length;
-    return `<button class="day${dk === tk ? ' today' : ''}" data-act="rday" data-v="${i}" aria-pressed="${UI.rDay === i}"><span>${w}</span><b>${d.getDate()}</b><small>${dk <= tk && bs.length ? pct(dn, bs.length) + '%' : bs.length + ' бл.'}</small></button>`;
+    return `<button class="day${dk === tk ? ' today' : ''}" data-act="rday" data-v="${i}" aria-pressed="${UI.rDay === i}"><span>${w}</span><b>${d.getDate()}</b><small>${counts(dk) && bs.length ? pct(dn, bs.length) + '%' : bs.length + ' бл.'}</small></button>`;
   }).join('');
   const done = blocks.filter((b) => rDone(k, b.id)).length;
   const end = addDays(wk, 6);
   // weekly totals
   let wd = 0, wn = 0;
-  for (let i = 0; i < 7; i++) { const dk = dkey(addDays(wk, i)); if (dk > tk) continue; const bs = D.routine[i] || []; wn += bs.length; wd += bs.filter((b) => rDone(dk, b.id)).length; }
+  for (let i = 0; i < 7; i++) { const dk = dkey(addDays(wk, i)); if (!counts(dk)) continue; const bs = blocksFor(i, dk); wn += bs.length; wd += bs.filter((b) => rDone(dk, b.id)).length; }
   return `
   <div class="head"><div><h1 class="title">Режим дня</h1><div class="sub">Свой распорядок на каждый день недели</div></div>
     <div class="mnav"><button class="ib" data-act="rweek" data-d="-1" aria-label="Предыдущая неделя">${ICON.left}</button><b>${wk.getDate()} ${MGEN[wk.getMonth()].slice(0, 3)} – ${end.getDate()} ${MGEN[end.getMonth()].slice(0, 3)}</b><button class="ib" data-act="rweek" data-d="1" aria-label="Следующая неделя">${ICON.right}</button></div></div>
@@ -776,7 +786,7 @@ function vRoutine() {
 /* ---------- budget ---------- */
 function bTable(g, title, rows) {
   const p = sum(rows, 'plan'), f = sum(rows, 'fact');
-  return `<section class="card"><div class="card-h ${g === 'income' ? 'green' : 'blue'}">${title}<span class="x">${money(f)}</span></div>
+  return `<section class="card" id="bt-${g}"><div class="card-h ${g === 'income' ? 'green' : 'blue'}">${title}<span class="x">${money(f)}</span></div>
   <table class="bt"><colgroup><col class="c-name"><col class="c-num"><col class="c-num"><col></colgroup>
   <thead><tr><th>Статья</th><th class="n">${g === 'income' ? 'План' : 'Бюджет'}</th><th class="n">Факт</th><th><span class="sr">Удалить</span></th></tr></thead>
   <tbody>${rows.map((r) => `<tr><td><input value="${esc(r.name)}" data-bf="name" data-g="${g}" data-id="${r.id}" aria-label="Название"></td>
@@ -786,9 +796,7 @@ function bTable(g, title, rows) {
   <tr><td colspan="4" style="padding:6px 10px 6px 12px"><button class="btn sm ghost" data-act="brow-add" data-g="${g}">${ICON.plus}Строка</button></td></tr></tbody>
   <tfoot><tr><td>Итого</td><td class="n">${Math.round(p).toLocaleString('ru-RU')}</td><td class="n ${g !== 'income' && f > p ? 'over' : ''}">${Math.round(f).toLocaleString('ru-RU')}</td><td></td></tr></tfoot></table></section>`;
 }
-function vBudget() {
-  const mk = mkey(UI.month);
-  const b = ensureBudget(mk);
+function budgetSummary(b) {
   const incP = sum(b.income, 'plan'), incF = sum(b.income, 'fact');
   const rows = BUDGET_GROUPS.map(([g, l]) => ({ g, label: l, plan: sum(b[g] || [], 'plan'), fact: sum(b[g] || [], 'fact') }));
   const outP = rows.reduce((a, r) => a + r.plan, 0), outF = rows.reduce((a, r) => a + r.fact, 0);
@@ -796,7 +804,6 @@ function vBudget() {
   const share = rows.slice().sort((a, b2) => b2.fact - a.fact);
   const saveRate = incF ? Math.round((rows.find((r) => r.g === 'save').fact / incF) * 100) : 0;
   return `
-  <div class="head"><div><h1 class="title">Мой бюджет</h1><div class="sub">План против факта. Новый месяц берёт статьи и бюджет из прошлого.</div></div>${monthNav()}</div>
   <div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
     <div class="card card-b stat"><div class="v" style="font-size:21px">${money(incF)}</div><div class="l">Доход (факт)</div><div class="d">план ${money(incP)}</div></div>
     <div class="card card-b stat"><div class="v" style="font-size:21px">${money(outF)}</div><div class="l">Расходы (факт)</div><div class="d ${outF > outP ? 'bad' : ''}">бюджет ${money(outP)}</div></div>
@@ -810,11 +817,30 @@ function vBudget() {
     <section class="card"><div class="card-h pink">Куда ушли деньги</div><div class="card-b">
       ${outF ? share.map((r) => `<div class="part" style="margin-bottom:12px" data-tip="${esc(r.label + ': ' + money(r.fact))}"><span>${esc(r.label)}</span><span class="muted">${money(r.fact)} · ${pct(r.fact, outF)}%</span><div class="bar"><i style="width:${pct(r.fact, outF)}%"></i></div></div>`).join('') : '<div class="empty">Внеси фактические траты — здесь появится разбивка</div>'}
     </div></section>
-  </div>
+  </div>`;
+}
+function vBudget() {
+  const b = ensureBudget(mkey(UI.month));
+  return `
+  <div class="head"><div><h1 class="title">Мой бюджет</h1><div class="sub">План против факта. Новый месяц берёт статьи и бюджет из прошлого.</div></div>${monthNav()}</div>
+  <div id="bsum">${budgetSummary(b)}</div>
   <div class="grid g2 mt">
     ${bTable('income', 'Доходы', b.income)}
     ${BUDGET_GROUPS.map(([g, l]) => bTable(g, l, b[g] || [])).join('')}
   </div>`;
+}
+// after a cell edit: refresh totals and charts without re-rendering the inputs (keeps focus and the next click)
+function refreshBudget(g) {
+  const b = ensureBudget(mkey(UI.month));
+  const box = document.getElementById('bsum'); if (box) box.innerHTML = budgetSummary(b);
+  const sec = document.getElementById('bt-' + g); if (!sec) return;
+  const rows = b[g] || [], p = sum(rows, 'plan'), f = sum(rows, 'fact');
+  sec.querySelector('.card-h .x').textContent = money(f);
+  const tds = sec.querySelectorAll('tfoot td');
+  tds[1].textContent = Math.round(p).toLocaleString('ru-RU');
+  tds[2].textContent = Math.round(f).toLocaleString('ru-RU');
+  tds[2].classList.toggle('over', g !== 'income' && f > p);
+  if (g !== 'income') rows.forEach((r) => { const i = sec.querySelector(`input[data-bf="fact"][data-id="${r.id}"]`); if (i) i.classList.toggle('over', num(r.fact) > num(r.plan) && num(r.plan) > 0); });
 }
 
 /* ================= modal / sheet ================= */
@@ -862,15 +888,16 @@ function editHabit(id, type) {
   openSheet(`<h3>${id ? 'Привычка' : 'Новая привычка'}</h3>
     <div class="f"><label>Название</label><div class="f-emoji"><input name="emoji" value="${esc(h.emoji)}" placeholder="🙂" maxlength="4" aria-label="Эмодзи"><input name="name" value="${esc(h.name)}" required placeholder="Например, Чтение 30 минут"></div></div>
     <div class="f"><label>Как часто</label>${segHtml('type', [['daily', 'Каждый день'], ['weekly', 'Раз в неделю'], ['monthly', 'Раз в месяц']], h.type)}</div>
-    ${id ? '<p class="small muted">Отметки прошлых дней сохранятся.</p>' : ''}
+    ${id ? '<p class="small muted">Отметки прошлых дней сохранятся.</p>' : '<p class="small muted">Новая привычка считается с сегодняшнего дня — прошлые проценты не изменятся.</p>'}
     ${sheetActions(id ? 'habit-del' : '')}`, (fd) => {
     const v = { name: fd.get('name').trim(), emoji: fd.get('emoji').trim(), type: fd.get('type') };
     if (!v.name) return false;
-    if (id) Object.assign(h, v); else D.habits.push({ id: uid(), ...v });
+    if (id) Object.assign(h, v); else D.habits.push({ id: uid(), from: dkey(today()), ...v });
     save(); render();
   }, (form) => { wireSeg(form); form.dataset.id = id || ''; });
 }
-function editBlock(id) {
+function editBlock(id, day) {
+  if (day != null) UI.rDay = day;
   const list = D.routine[UI.rDay] || (D.routine[UI.rDay] = []);
   const b = id ? list.find((x) => x.id === id) : { time: '', end: '', title: '', emoji: '' };
   if (!b) return;
@@ -880,7 +907,7 @@ function editBlock(id) {
     ${sheetActions(id ? 'block-del' : '')}`, (fd) => {
     const v = { title: fd.get('title').trim(), emoji: fd.get('emoji').trim(), time: fd.get('time'), end: fd.get('end') };
     if (!v.title || !v.time) return false;
-    if (id) Object.assign(b, v); else list.push({ id: uid(), ...v });
+    if (id) Object.assign(b, v); else list.push({ id: uid(), from: dkey(today()), ...v });
     save(); render();
   }, (form) => { form.dataset.id = id || ''; });
 }
@@ -889,8 +916,12 @@ function copyDay() {
     <p class="small muted" style="margin-top:-6px">Расписание выбранных дней заменится этим.</p>
     <div class="list" style="margin-bottom:12px">${WDF.map((w, i) => i === UI.rDay ? '' : `<label class="li" style="grid-template-columns:auto 1fr;padding:10px 4px"><input type="checkbox" name="d" value="${i}" style="width:20px;height:20px"><span>${w}</span></label>`).join('')}</div>
     ${sheetActions('')}`, (fd) => {
-    const src = D.routine[UI.rDay] || [];
-    fd.getAll('d').forEach((i) => (D.routine[i] = src.map((b) => ({ ...b, id: uid() }))));
+    const src = blocksFor(UI.rDay), tk = dkey(today());
+    fd.getAll('d').forEach((i) => {
+      // old blocks stop counting from today (past ticks stay valid), the copies count from today
+      (D.routine[i] || []).forEach((b) => { if (!b.to) b.to = tk; });
+      D.routine[i] = (D.routine[i] || []).filter((b) => b.to > (b.from || '')).concat(src.map((b) => ({ ...b, id: uid(), from: tk, to: undefined })));
+    });
     save(); render(); toast('Скопировано');
   });
 }
@@ -959,10 +990,10 @@ document.addEventListener('click', (e) => {
     case 'cats': editCats(); break;
     case 'habit-edit': editHabit(id); break;
     case 'habit-add': editHabit(null, el.dataset.type); break;
-    case 'habit-del': if (confirm('Удалить привычку? Её отметки тоже исчезнут.')) { D.habits = D.habits.filter((h) => h.id !== formId); Object.values(D.hlog).forEach((o) => delete o[formId]); save(); closeSheet(); render(); } break;
-    case 'block-edit': editBlock(id); break;
+    case 'habit-del': if (confirm('Убрать привычку? С сегодняшнего дня она не будет показываться, прошлые отметки останутся в статистике.')) { const h = D.habits.find((x) => x.id === formId); if (h) h.to = dkey(today()); save(); closeSheet(); render(); } break;
+    case 'block-edit': editBlock(id, el.dataset.day != null ? +el.dataset.day : null); break;
     case 'block-add': editBlock(null); break;
-    case 'block-del': D.routine[UI.rDay] = (D.routine[UI.rDay] || []).filter((b) => b.id !== formId); save(); closeSheet(); render(); break;
+    case 'block-del': { const b = (D.routine[UI.rDay] || []).find((x) => x.id === formId); if (b) b.to = dkey(today()); save(); closeSheet(); render(); break; }
     case 'block-copy': copyDay(); break;
     case 'brow-add': { const b = ensureBudget(mkey(UI.month), true); (b[el.dataset.g] || (b[el.dataset.g] = [])).push({ id: uid(), name: 'Новая статья', plan: 0, fact: 0 }); save(); render(); break; }
     case 'brow-del': { const b = ensureBudget(mkey(UI.month), true); b[el.dataset.g] = b[el.dataset.g].filter((r) => r.id !== id); save(); render(); break; }
@@ -986,7 +1017,7 @@ document.addEventListener('change', (e) => {
     if (!r) return;
     r[el.dataset.bf] = el.dataset.bf === 'name' ? el.value.trim() : num(el.value);
     save();
-    const y = scrollY; render(); scrollTo(0, y);
+    refreshBudget(el.dataset.g);
   }
   if (el.dataset.act === 'import-file' && el.files[0]) {
     el.files[0].text().then((t) => { if (importJSON(t)) { closeSheet(); render(); } });
@@ -1022,7 +1053,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 render();
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
 </script>
 </body>
 </html>
