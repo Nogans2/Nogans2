@@ -1151,7 +1151,7 @@ render();
 /* ================= inbox: tasks Claude adds from any chat =================
    Claude appends tasks to planner/inbox.json in the GitHub repo. The app pulls it when opened
    or brought back to the screen and adds every task it has not seen yet (by id). */
-const INBOX_API = 'https://api.github.com/repos/Nogans2/Nogans2/contents/planner/inbox.json?ref=claude/blissful-faraday-e0heo0';
+const INBOX_API = 'https://api.github.com/repos/Nogans2/Nogans2/contents/planner/inbox.json?ref=claude/mobile-app-w4i9zu';
 let inboxBusy = false;
 async function fetchInbox() {
   try {
