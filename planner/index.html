@@ -407,12 +407,37 @@ function load() {
   return seed();
 }
 let D = load();
+
+/* Personal setup (18 Nov 2026). Applied once per device: wipes tasks, habits, ticks and routine,
+   starts counting from that day, and leaves the budget untouched. */
+const SETUP_ID = 'setup-2026-11-18';
+function applySetup() {
+  const B = (time, end, title, emoji) => ({ id: uid(), time, end, title, emoji });
+  const day0 = dkey(today());
+  D.start = day0;
+  D.tasks = [];
+  D.hlog = {};
+  D.rlog = {};
+  D.habits = [
+    { id: uid(), name: 'Встать в 8:30', emoji: '⏰', type: 'daily', from: day0 },
+    { id: uid(), name: 'Лечь спать до 00:30', emoji: '🌙', type: 'daily', from: day0 },
+    { id: uid(), name: 'Выпить креатин', emoji: '💊', type: 'daily', from: day0 },
+    // gym Mon/Wed/Fri, starting the week after the tournament
+    { id: uid(), name: 'Сходить в зал', emoji: '🏋️', type: 'daily', days: [0, 2, 4], from: '2026-11-23' }
+  ];
+  D.routine = {};
+  for (let i = 0; i < 7; i++) D.routine[i] = [B('08:30', '09:15', 'Подъём, душ, собраться', '☀️'), B('00:30', '', 'Сон (8 часов)', '🌙')];
+  D.setup = SETUP_ID;
+  save();
+}
+
 let saveFailed = false;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(D)); saveFailed = false; }
   catch (e) { if (!saveFailed) toast('Не удалось сохранить: память браузера недоступна'); saveFailed = true; }
 }
 save();
+if (D.setup !== SETUP_ID) applySetup();
 
 /* ================= UI state ================= */
 const now0 = today();
@@ -428,7 +453,9 @@ try { const v = sessionStorage.getItem('planner.view'); if (v) UI.view = v; } ca
 // Items keep history: `from` = first day they count, `to` = first day they no longer count (set on delete).
 const alive = (x, k) => (!x.from || x.from <= k) && (!x.to || k < x.to);
 const aliveIn = (x, a, b) => (!x.from || x.from <= b) && (!x.to || x.to > a);
-const dailyHabits = (k) => D.habits.filter((h) => h.type === 'daily' && (k ? alive(h, k) : !h.to));
+// a daily habit can be limited to some weekdays (h.days = [0..6], 0 = Monday)
+const hOn = (h, k) => alive(h, k) && (!h.days || !h.days.length || h.days.includes(wdi(parse(k))));
+const dailyHabits = (k) => D.habits.filter((h) => h.type === 'daily' && (k ? hOn(h, k) : !h.to));
 const counts = (k) => k >= D.start && k <= dkey(today());
 const hDone = (k, id) => !!(D.hlog[k] && D.hlog[k][id]);
 function toggleHabit(k, id) {
@@ -447,7 +474,9 @@ function toggleBlock(k, id) {
   save();
 }
 // blocks of a weekday that apply on date k (or the current schedule when k is omitted)
-const blocksFor = (i, k) => (D.routine[i] || []).filter((b) => (k ? alive(b, k) : !b.to)).sort((a, b) => a.time.localeCompare(b.time));
+const blocksFor = (i, k) => (D.routine[i] || []).filter((b) => (k ? alive(b, k) : !b.to)).sort((a, b) => tkey(a.time).localeCompare(tkey(b.time)));
+// times after midnight (before 05:00) belong to the end of the day
+const tkey = (t) => (t < '05:00' ? '~' + t : t);
 function markStart(k) { if (k < D.start) D.start = k; }
 
 /** Efficiency of one day: average of the parts that exist that day (habits, routine, tasks due). null = nothing to measure. */
@@ -589,7 +618,7 @@ function vOverview() {
     <section class="card"><div class="card-h blue">Ближайшие задачи<button class="btn sm soft" data-act="nav" data-v="tasks">Все</button></div>
       <div class="list">${active.length ? active.map(taskRow).join('') : '<div class="empty">Все задачи выполнены 🎉</div>'}</div></section>
     <section class="card"><div class="card-h green">Режим дня — сегодня<button class="btn sm soft" data-act="nav" data-v="routine">Открыть</button></div>
-      <div class="list">${blocks.length ? blocks.map((bl, i) => blockRow(bl, tk, nowHM >= bl.time && (!blocks[i + 1] || nowHM < blocks[i + 1].time))).join('') : '<div class="empty">На сегодня режим не задан</div>'}</div></section>
+      <div class="list">${blocks.length ? blocks.map((bl, i) => blockRow(bl, tk, tkey(nowHM) >= tkey(bl.time) && (!blocks[i + 1] || tkey(nowHM) < tkey(blocks[i + 1].time)))).join('') : '<div class="empty">На сегодня режим не задан</div>'}</div></section>
   </div>`;
 }
 function monthNavInline() {
@@ -675,12 +704,12 @@ function vHabits() {
   head2 += '</tr>';
   let body = '', totalDone = 0, possible = 0;
   hs.forEach((h) => {
-    let row = `<tr><th class="nm" scope="row"><button data-act="habit-edit" data-id="${h.id}" title="${esc(h.name)}">${esc(h.emoji || '')} ${esc(h.name)}</button></th>`;
+    let row = `<tr><th class="nm" scope="row"><button data-act="habit-edit" data-id="${h.id}" title="${esc(h.name)}">${esc(h.emoji || '')} ${esc(h.name)}${h.days && h.days.length && h.days.length < 7 ? ` <span class="muted small">${h.days.map((d) => WD[d]).join('/')}</span>` : ''}</button></th>`;
     let done = 0, poss = 0;
     keys.forEach((k) => {
       const on = hDone(k, h.id);
-      if (counts(k) && alive(h, k)) { poss++; if (on) done++; }
-      const off = k > tk || !alive(h, k);
+      if (counts(k) && hOn(h, k)) { poss++; if (on) done++; }
+      const off = k > tk || !hOn(h, k);
       row += `<td class="${k === tk ? 'today' : ''}">${off && !on ? '' : `<button class="cellbtn" data-act="hd" data-h="${h.id}" data-k="${k}" ${off ? 'disabled' : ''} aria-label="${esc(h.name)}, ${fmtDate(k)}: ${on ? 'выполнено' : 'не выполнено'}">${cb(on)}</button>`}</td>`;
     });
     totalDone += done; possible += poss;
@@ -690,7 +719,7 @@ function vHabits() {
   let f1 = '<tr><th class="nm" scope="row">Выполнено</th>', f2 = '<tr><th class="nm" scope="row">Не выполнено</th>', f3 = '<tr><th class="nm" scope="row">Прогресс</th>';
   keys.forEach((k) => {
     const skip = !counts(k);
-    const ah = hs.filter((h) => alive(h, k));
+    const ah = hs.filter((h) => hOn(h, k));
     const d = ah.filter((h) => hDone(k, h.id)).length;
     const p = pct(d, ah.length);
     f1 += `<td class="${k === tk ? 'today' : ''}">${skip ? '' : d}</td>`;
@@ -778,7 +807,7 @@ function vRoutine() {
   <div class="days">${days}</div>
   <div class="grid g21">
     <section class="card"><div class="card-h blue">${WDF[UI.rDay]}, ${date.getDate()} ${MGEN[date.getMonth()]}<span class="x">${done}/${blocks.length} выполнено</span></div>
-      <div class="list">${blocks.length ? blocks.map((b, i) => blockRow(b, k, k === tk && nowHM >= b.time && (!blocks[i + 1] || nowHM < blocks[i + 1].time))).join('') : '<div class="empty">Пока пусто — добавь первый блок</div>'}</div>
+      <div class="list">${blocks.length ? blocks.map((b, i) => blockRow(b, k, k === tk && tkey(nowHM) >= tkey(b.time) && (!blocks[i + 1] || tkey(nowHM) < tkey(blocks[i + 1].time)))).join('') : '<div class="empty">Пока пусто — добавь первый блок</div>'}</div>
       <div class="card-b row-actions" style="border-top:1px solid var(--line)"><button class="btn sm" data-act="block-add">${ICON.plus}Блок</button><button class="btn sm ghost" data-act="block-copy">Скопировать день…</button></div>
     </section>
     <div class="grid" style="align-content:start">
@@ -893,14 +922,24 @@ function editHabit(id, type) {
   if (!h) return;
   openSheet(`<h3>${id ? 'Привычка' : 'Новая привычка'}</h3>
     <div class="f"><label>Название</label><div class="f-emoji"><input name="emoji" value="${esc(h.emoji)}" placeholder="🙂" maxlength="4" aria-label="Эмодзи"><input name="name" value="${esc(h.name)}" required placeholder="Например, Чтение 30 минут"></div></div>
-    <div class="f"><label>Как часто</label>${segHtml('type', [['daily', 'Каждый день'], ['weekly', 'Раз в неделю'], ['monthly', 'Раз в месяц']], h.type)}</div>
+    <div class="f"><label>Как часто</label>${segHtml('type', [['daily', 'По дням'], ['weekly', 'Раз в неделю'], ['monthly', 'Раз в месяц']], h.type)}</div>
+    <div class="f" data-days-wrap><label>В какие дни (для «По дням»; ничего не выбрано — каждый день)</label><input type="hidden" name="days" value="${esc((h.days || []).join(','))}"><div class="seg" data-days>${WD.map((w, i) => `<button type="button" data-v="${i}" aria-pressed="${(h.days || []).includes(i)}">${w}</button>`).join('')}</div></div>
     ${id ? '<p class="small muted">Отметки прошлых дней сохранятся.</p>' : '<p class="small muted">Новая привычка считается с сегодняшнего дня — прошлые проценты не изменятся.</p>'}
     ${sheetActions(id ? 'habit-del' : '')}`, (fd) => {
-    const v = { name: fd.get('name').trim(), emoji: fd.get('emoji').trim(), type: fd.get('type') };
+    const days = String(fd.get('days') || '').split(',').filter((x) => x !== '').map(Number).sort();
+    const v = { name: fd.get('name').trim(), emoji: fd.get('emoji').trim(), type: fd.get('type'), days: fd.get('type') === 'daily' && days.length && days.length < 7 ? days : undefined };
     if (!v.name) return false;
     if (id) Object.assign(h, v); else D.habits.push({ id: uid(), from: dkey(today()), ...v });
     save(); render();
-  }, (form) => { wireSeg(form); form.dataset.id = id || ''; });
+  }, (form) => {
+    wireSeg(form); form.dataset.id = id || '';
+    const box = form.querySelector('[data-days]'), inp = form.querySelector('input[name="days"]');
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');
+      inp.value = [...box.querySelectorAll('[aria-pressed="true"]')].map((x) => x.dataset.v).join(',');
+    });
+  });
 }
 function editBlock(id, day) {
   if (day != null) UI.rDay = day;
