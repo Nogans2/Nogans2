@@ -1077,6 +1077,7 @@ document.addEventListener('submit', (e) => {
   if (f.dataset.form === 'quick-task') {
     e.preventDefault();
     const title = f.title.value.trim(); if (!title) return;
+    if (/[?&]add=/.test(title)) { const n = importFromText(title); f.title.value = ''; if (n) importNote(n); return; }
     D.tasks.push({ id: uid(), title, emoji: '', due: dkey(today()), prio: 2, cat: UI.taskCat !== 'all' ? UI.taskCat : (D.cats[0] || ''), done: false });
     save(); render(); const inp = view.querySelector('[data-form="quick-task"] input'); if (inp) inp.focus();
   }
@@ -1101,7 +1102,52 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && dkey(today()) !== lastDay) { lastDay = dkey(today()); render(); }
 });
 
+/* ================= tasks from a link (Claude sends these) =================
+   ?add=Задача&due=2026-11-20&prio=1&cat=Работа&emoji=📞
+   Several tasks: repeat add, each may carry its own fields: add=Задача|2026-11-20|1|Работа
+   prio: 0 Срочно, 1 Высокий, 2 Средний, 3 Низкий. The same link is never imported twice. */
+function importFromQuery(qs) {
+  const q = new URLSearchParams(qs);
+  const items = q.getAll('add').map((x) => x.trim()).filter(Boolean);
+  if (!items.length) return 0;
+  const sig = q.toString();
+  D.imported = D.imported || [];
+  if (D.imported.includes(sig)) { toast('Эти задачи уже добавлены'); return -1; }
+  const okDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+  const prioOf = (v, def) => { const n = parseInt(v, 10); return n >= 0 && n <= 3 ? n : def; };
+  const dDue = okDate(q.get('due')) ? q.get('due') : dkey(today());
+  const dPrio = prioOf(q.get('prio'), 2);
+  const catOf = (v) => { v = (v || '').trim(); if (!v) return D.cats[0] || ''; if (!D.cats.includes(v)) D.cats.push(v); return v; };
+  const dCat = q.get('cat');
+  for (const it of items) {
+    const [title, due, prio, cat] = it.split('|').map((x) => (x || '').trim());
+    if (!title) continue;
+    D.tasks.push({ id: uid(), title, emoji: (q.get('emoji') || '').trim(), due: okDate(due) ? due : dDue, prio: prioOf(prio, dPrio), cat: catOf(cat || dCat), done: false });
+  }
+  D.imported = [...D.imported, sig].slice(-100);
+  save();
+  return items.length;
+}
+function importNote(n) {
+  if (n <= 0) return;
+  UI.view = 'tasks'; UI.taskFilter = 'active'; UI.taskCat = 'all';
+  try { sessionStorage.setItem('planner.view', 'tasks'); } catch (e) {}
+  render();
+  toast(`Добавлено ${n} ${plural(n, 'задача', 'задачи', 'задач')} из чата`);
+}
+// pasted link or "?add=..." text
+function importFromText(text) {
+  const m = String(text || '').match(/[?&]add=[^\s]*/);
+  if (!m) return 0;
+  return importFromQuery(m[0].replace(/^[?&]/, ''));
+}
+
 render();
+{
+  const n = importFromQuery(location.search);
+  if (location.search) history.replaceState(null, '', location.pathname + location.hash);
+  importNote(n);
+}
 if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
 </script>
 </body>
