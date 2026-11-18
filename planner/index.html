@@ -1148,6 +1148,42 @@ render();
   if (location.search) history.replaceState(null, '', location.pathname + location.hash);
   importNote(n);
 }
+/* ================= inbox: tasks Claude adds from any chat =================
+   Claude appends tasks to planner/inbox.json in the GitHub repo. The app pulls it when opened
+   or brought back to the screen and adds every task it has not seen yet (by id). */
+const INBOX_API = 'https://api.github.com/repos/Nogans2/Nogans2/contents/planner/inbox.json?ref=claude/blissful-faraday-e0heo0';
+let inboxBusy = false;
+async function fetchInbox() {
+  try {
+    const r = await fetch(INBOX_API + '&t=' + Date.now(), { cache: 'no-store', headers: { Accept: 'application/vnd.github.raw+json' } });
+    if (r.ok) return await r.json();
+  } catch (e) {}
+  const r = await fetch('inbox.json?t=' + Date.now(), { cache: 'no-store' }); // fallback: the published copy
+  return r.ok ? r.json() : null;
+}
+async function pullInbox() {
+  if (inboxBusy || !navigator.onLine) return;
+  inboxBusy = true;
+  try {
+    const data = await fetchInbox();
+    const list = (data && Array.isArray(data.tasks)) ? data.tasks : [];
+    D.inboxSeen = D.inboxSeen || [];
+    const okDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+    let n = 0;
+    for (const t of list) {
+      if (!t || !t.id || !t.title || D.inboxSeen.includes(t.id)) continue;
+      const cat = (t.cat || '').trim() || D.cats[0] || '';
+      if (cat && !D.cats.includes(cat)) D.cats.push(cat);
+      const p = parseInt(t.prio, 10);
+      D.tasks.push({ id: uid(), title: String(t.title).trim(), emoji: (t.emoji || '').trim(), due: okDate(t.due) ? t.due : dkey(today()), prio: p >= 0 && p <= 3 ? p : 2, cat, done: false });
+      D.inboxSeen.push(t.id); n++;
+    }
+    if (n) { D.inboxSeen = D.inboxSeen.slice(-500); save(); importNote(n); }
+  } catch (e) { /* offline or no inbox yet */ }
+  inboxBusy = false;
+}
+pullInbox();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullInbox(); });
 if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
 </script>
 </body>
