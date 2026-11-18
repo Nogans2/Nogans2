@@ -1,3 +1,5 @@
 {
-  "tasks": []
+  "tasks": [
+    { "id": "2026-11-18-moysklad-token", "title": "Дать Claude токен МоегоСклада", "due": "2026-11-19", "prio": 1, "cat": "Работа", "emoji": "🔑" }
+  ]
 }
