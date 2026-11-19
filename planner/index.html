@@ -369,13 +369,7 @@ function seed() {
     v: 1,
     start: dkey(t),
     cats: ['Личное', 'Работа', 'Другое'],
-    tasks: [
-      { id: uid(), title: 'Посмотреть вебинар', emoji: '📈', due: d(0), prio: 2, cat: 'Работа', done: false },
-      { id: uid(), title: 'Занятие по испанскому', emoji: '🇪🇸', due: d(1), prio: 1, cat: 'Личное', done: false },
-      { id: uid(), title: 'Проверить почту', emoji: '📥', due: d(0), prio: 3, cat: 'Работа', done: false },
-      { id: uid(), title: 'Силовая тренировка', emoji: '💪', due: d(2), prio: 2, cat: 'Личное', done: false },
-      { id: uid(), title: 'Купить билеты на самолёт', emoji: '✈️', due: d(3), prio: 0, cat: 'Другое', done: false }
-    ],
+    tasks: [], // tasks are shared with the Google Sheet, so no sample tasks
     habits: [
       H('Проверить почту', '📥', 'daily'), H('Подсчёт калорий', '🍎', 'daily'), H('Тренировка — 40 мин', '💪', 'daily'),
       H('5000–10000 шагов', '🚶', 'daily'), H('Английский 40 минут', '🇬🇧', 'daily'), H('Чтение 30 минут', '📘', 'daily'),
@@ -435,6 +429,7 @@ let saveFailed = false;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(D)); saveFailed = false; }
   catch (e) { if (!saveFailed) toast('Не удалось сохранить: память браузера недоступна'); saveFailed = true; }
+  if (window.syncReady) onTasksSaved();
 }
 save();
 if (D.setup !== SETUP_ID) applySetup();
@@ -1051,7 +1046,7 @@ document.addEventListener('click', (e) => {
       break;
     }
     case 'copy': navigator.clipboard?.writeText(JSON.stringify(D)).then(() => toast('Скопировано — сохрани в заметки'), () => toast('Не удалось скопировать')); break;
-    case 'reset': if (confirm('Стереть все данные планера и начать заново с примером?')) { D = seed(); for (const k in drafts) delete drafts[k]; save(); closeSheet(); render(); toast('Начали с чистого листа'); } break;
+    case 'reset': if (confirm('Стереть все данные планера и начать заново? Задачи в Google Таблице тоже очистятся.')) { D = seed(); for (const k in drafts) delete drafts[k]; save(); closeSheet(); render(); toast('Начали с чистого листа'); } break;
   }
 });
 document.addEventListener('change', (e) => {
@@ -1148,42 +1143,91 @@ render();
   if (location.search) history.replaceState(null, '', location.pathname + location.hash);
   importNote(n);
 }
-/* ================= inbox: tasks Claude adds from any chat =================
-   Claude appends tasks to planner/inbox.json in the GitHub repo. The app pulls it when opened
-   or brought back to the screen and adds every task it has not seen yet (by id). */
-const INBOX_API = 'https://api.github.com/repos/Nogans2/Nogans2/contents/planner/inbox.json?ref=claude/mobile-app-w4i9zu';
-let inboxBusy = false;
-async function fetchInbox() {
-  try {
-    const r = await fetch(INBOX_API + '&t=' + Date.now(), { cache: 'no-store', headers: { Accept: 'application/vnd.github.raw+json' } });
-    if (r.ok) return await r.json();
-  } catch (e) {}
-  const r = await fetch('inbox.json?t=' + Date.now(), { cache: 'no-store' }); // fallback: the published copy
-  return r.ok ? r.json() : null;
+/* ================= sync tasks with the Google Sheet (Apps Script) =================
+   The sheet is shared with the voice assistant «Джарвис».
+   - On open / when the app comes back: send unsent changes first, then pull the sheet
+     (new ids are added, changed fields take the sheet's version, nothing local is deleted),
+     then send the merged list back.
+   - After any task change: send the whole list ("replace"). If that fails, a dirty flag
+     is kept in localStorage and the list is sent next time. Network errors never break the app. */
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbyr3MZZmgqzq19sathxaukvRaVT8744qq-6lrywn6mPVrhSEd3ssvY8DJrARQG4wIokxQ/exec';
+const SYNC_TOKEN = 'sg-jarvis-7f3k9q';
+const DIRTY_KEY = 'planner.syncDirty';
+const SYNC_FIELDS = ['title', 'due', 'prio', 'cat', 'emoji', 'done'];
+const toSheet = (t) => ({ id: t.id, title: t.title || '', due: t.due || '', prio: +t.prio || 0, cat: t.cat || '', emoji: t.emoji || '', done: !!t.done });
+const tasksSig = () => JSON.stringify(D.tasks.map(toSheet));
+const isDirty = () => { try { return localStorage.getItem(DIRTY_KEY) === '1'; } catch (e) { return false; } };
+const setDirty = (v) => { try { if (v) localStorage.setItem(DIRTY_KEY, '1'); else localStorage.removeItem(DIRTY_KEY); } catch (e) {} };
+let lastSig = tasksSig();
+let pushing = null, pushAgain = false, merging = false;
+window.syncReady = true;
+
+// called from save(): any change to the task list is sent right away
+function onTasksSaved() {
+  if (merging) return;
+  const sig = tasksSig();
+  if (sig === lastSig) return;
+  lastSig = sig;
+  setDirty(true); // cleared only after the sheet confirms
+  pushTasks();
 }
-async function pullInbox() {
-  if (inboxBusy || !navigator.onLine) return;
-  inboxBusy = true;
+function pushTasks() {
+  if (pushing) { pushAgain = true; return pushing; }
+  pushing = (async () => {
+    try {
+      // no Content-Type header: the body goes as text/plain, so there is no CORS preflight
+      const r = await fetch(SYNC_URL, { method: 'POST', body: JSON.stringify({ token: SYNC_TOKEN, action: 'replace', tasks: D.tasks.map(toSheet) }) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json().catch(() => ({}));
+      if (j && (j.error || j.ok === false)) throw new Error(j.error || 'rejected');
+      if (!pushAgain) setDirty(false);
+    } catch (e) { setDirty(true); }
+    pushing = null;
+    if (pushAgain) { pushAgain = false; return pushTasks(); }
+  })();
+  return pushing;
+}
+let syncing = false;
+async function syncTasks() {
+  if (syncing) return;
+  syncing = true;
   try {
-    const data = await fetchInbox();
-    const list = (data && Array.isArray(data.tasks)) ? data.tasks : [];
-    D.inboxSeen = D.inboxSeen || [];
+    if (isDirty()) { await pushTasks(); if (isDirty()) return; } // still offline: keep local changes, try later
+    const r = await fetch(SYNC_URL + '?token=' + encodeURIComponent(SYNC_TOKEN) + '&t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    const list = data && Array.isArray(data.tasks) ? data.tasks : null;
+    if (!list) return;
     const okDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
-    let n = 0;
-    for (const t of list) {
-      if (!t || !t.id || !t.title || D.inboxSeen.includes(t.id)) continue;
-      const cat = (t.cat || '').trim() || D.cats[0] || '';
-      if (cat && !D.cats.includes(cat)) D.cats.push(cat);
-      const p = parseInt(t.prio, 10);
-      D.tasks.push({ id: uid(), title: String(t.title).trim(), emoji: (t.emoji || '').trim(), due: okDate(t.due) ? t.due : dkey(today()), prio: p >= 0 && p <= 3 ? p : 2, cat, done: false });
-      D.inboxSeen.push(t.id); n++;
+    let changed = 0;
+    merging = true;
+    for (const st of list) {
+      if (!st || !st.id || !String(st.title || '').trim()) continue;
+      const p = parseInt(st.prio, 10);
+      const v = {
+        title: String(st.title).trim(), due: okDate(st.due) ? st.due : '', prio: p >= 0 && p <= 3 ? p : 2,
+        cat: String(st.cat || '').trim(), emoji: String(st.emoji || '').trim(), done: st.done === true || st.done === 'TRUE' || st.done === 'true'
+      };
+      if (v.cat && !D.cats.includes(v.cat)) D.cats.push(v.cat);
+      const id = String(st.id);
+      const t = D.tasks.find((x) => x.id === id);
+      if (!t) { D.tasks.push({ id, ...v, doneAt: v.done ? dkey(today()) : null }); changed++; continue; }
+      const cur = toSheet(t);
+      if (SYNC_FIELDS.some((f) => cur[f] !== v[f])) {
+        if (v.done !== !!t.done) t.doneAt = v.done ? dkey(today()) : null;
+        Object.assign(t, v); changed++;
+      }
     }
-    if (n) { D.inboxSeen = D.inboxSeen.slice(-500); save(); importNote(n); }
-  } catch (e) { /* offline or no inbox yet */ }
-  inboxBusy = false;
+    if (changed) { save(); if (!modal.innerHTML) render(); }
+    merging = false;
+    lastSig = tasksSig();
+    await pushTasks(); // the sheet now gets the merged list, including tasks made offline
+  } catch (e) { /* offline or the script is unavailable — work on, sync later */ }
+  finally { merging = false; syncing = false; }
 }
-pullInbox();
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullInbox(); });
+syncTasks();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncTasks(); });
+window.addEventListener('online', () => syncTasks());
 if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
 </script>
 </body>

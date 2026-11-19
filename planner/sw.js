@@ -1,6 +1,6 @@
 /* Планер — offline cache. Pages network-first (so updates arrive), everything else cache-first.
    Only touches caches whose name starts with "planner-" so it never interferes with Пакт. */
-const CACHE = 'planner-v2';
+const CACHE = 'planner-v3';
 const FONTS = 'planner-fonts-v1';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
@@ -23,7 +23,6 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  if (url.pathname.endsWith('/inbox.json')) return; // always live, never cached
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate') {
       e.respondWith(
