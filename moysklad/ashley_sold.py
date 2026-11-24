@@ -93,21 +93,43 @@ def main():
         for r in get_all("/report/stock/all", limit=1000):
             href = r["meta"]["href"].split("?")[0]
             stock[href] = r
+    # "in transit" = ordered from suppliers but not yet received: open purchase orders
+    # (status not "Получено"/"Возврат поставщику"), quantity minus already received.
+    # MoySklad's own stock-report inTransit is always 0 here because POs don't use "ожидание".
+    transit = collections.defaultdict(lambda: {"qty": 0, "pos": []})
+    if items:
+        for po in get_all("/entity/purchaseorder", limit=100, expand="state", order="moment,desc"):
+            st = (po.get("state") or {}).get("name", "")
+            if st in ("Получено", "Возврат поставщику") or not po.get("applicable"):
+                continue
+            for p in get_all(po["positions"]["meta"]["href"], limit=1000):
+                left = p["quantity"] - p.get("shipped", 0)
+                if left <= 0:
+                    continue
+                href = p["assortment"]["meta"]["href"].split("?")[0]
+                if p["assortment"]["meta"]["type"] == "variant":
+                    continue  # variants are rare here; product-level match only
+                t = transit[href]
+                t["qty"] += left
+                plan = (po.get("deliveryPlannedMoment") or "")[:10]
+                t["pos"].append(f"{po['name']} ({st}, план {plan})" if plan else f"{po['name']} ({st})")
     for it in items.values():
         s = stock.get(it["href"], {})
         it["stock"] = s.get("stock", 0)
         it["reserve"] = s.get("reserve", 0)
-        it["inTransit"] = s.get("inTransit", 0)
+        t = transit.get(it["href"], {"qty": 0, "pos": []})
+        it["inTransit"] = t["qty"]
+        it["transitOrders"] = "; ".join(t["pos"])
 
     rows = sorted(items.values(), key=lambda x: (x["folder"], x["name"]))
     os.makedirs(args.out, exist_ok=True)
     path = os.path.join(args.out, f"ashley_sold_{day}.csv")
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
-        w.writerow(["Артикул Ashley", "Название", "Продано, шт", "Остаток", "Резерв", "В пути", "Категория", "Заказы"])
+        w.writerow(["Артикул Ashley", "Название", "Продано, шт", "Остаток", "Резерв", "В пути", "Заказ поставщику (статус, план)", "Категория", "Заказы"])
         for it in rows:
             w.writerow([it["article"], it["name"], f"{it['qty']:g}", f"{it['stock']:g}", f"{it['reserve']:g}",
-                        f"{it['inTransit']:g}", it["folder"], "; ".join(it["orders"])])
+                        f"{it['inTransit']:g}", it["transitOrders"], it["folder"], "; ".join(it["orders"])])
 
     print(f"Дата: {day} | заказов покупателей: {len(orders)} | позиций Ashley: {len(rows)} | CSV: {path}")
     print(json.dumps(rows, ensure_ascii=False, indent=1, default=str))
