@@ -129,17 +129,22 @@ function cush(x,y,w,h,vert){ // свободная подушка спинки, 
 function piece(p){
   if(p.rot){const q=Object.assign({},p,{rot:0,x:0,y:0,w:p.d,d:p.w}); return `<g transform="translate(${p.x+p.w},${p.y}) rotate(90)">${piece(q)}</g>`;}
   const {x,y,w,d}=p, back=p.back??"T", arms=p.arms||"";
-  const CB=84, CC=74, CT=27, BW=22, g=2.5;
+  const CB=84, CC=74, CT=27, BW=24, g=2.5;
   let s=`<g transform="translate(${x},${y})"><rect x="0" y="0" width="${w}" height="${d}" rx="9" class="o"/>`;
-  // стёжка: подушечки-квадраты по всей платформе
-  const cols=Math.max(1,Math.round(w/52)), cw=w/cols;
-  const rowsH = back.includes("T") ? [d*0.27, d*0.365, d*0.365] : (d>130 ? [d/3,d/3,d/3] : [d/2,d/2]);
-  // клетки: швы-впадины + углубления на пересечениях
+  // стёжка по фабричному чертежу: у подлокотника — узкая колонка ~30 см под валиком,
+  // дальше колонки ~43 см; швы идут через всю глубину; ряды: узкий задний (под подушками) + 2 передних
+  const AWc=30, xs=[];
+  let x0=arms.includes("L")?AWc:0, x1=w-(arms.includes("R")?AWc:0);
+  if(arms.includes("L")) xs.push(AWc);
+  const nc=Math.max(1,Math.round((x1-x0)/(back==="T"?43:54)));
+  for(let i=1;i<nc;i++) xs.push(x0+i*(x1-x0)/nc);
+  if(arms.includes("R")) xs.push(w-AWc);
+  const rowsH = back.includes("T") ? [d*0.27, d*0.36, d*0.37] : (d>130 ? Array(Math.round(d/40)).fill(d/Math.round(d/40)) : [d/2,d/2]);
   let yy=0; const ys=[];
   for(const rh of rowsH){ yy+=rh; ys.push(yy); } ys.pop();
-  for(let i=1;i<cols;i++){const xx=i*cw; s+=`<line x1="${xx}" y1="3" x2="${xx}" y2="${d-3}" class="sm"/><line x1="${xx}" y1="3" x2="${xx}" y2="${d-3}" class="sl"/>`;}
-  for(const y2 of ys){ s+=`<line x1="3" y1="${y2}" x2="${w-3}" y2="${y2}" class="sm"/><line x1="3" y1="${y2}" x2="${w-3}" y2="${y2}" class="sl"/>`;}
-  for(let i=1;i<cols;i++) for(const y2 of ys) s+=`<circle cx="${i*cw}" cy="${y2}" r="2.6" class="dp"/>`;
+  for(const xx of xs) s+=`<line x1="${xx}" y1="3" x2="${xx}" y2="${d-3}" class="sm"/><line x1="${xx}" y1="3" x2="${xx}" y2="${d-3}" class="sl"/>`;
+  for(const y2 of ys) s+=`<line x1="3" y1="${y2}" x2="${w-3}" y2="${y2}" class="sm"/><line x1="3" y1="${y2}" x2="${w-3}" y2="${y2}" class="sl"/>`;
+  for(const xx of xs) for(const y2 of ys) s+=`<circle cx="${xx}" cy="${y2}" r="2.6" class="dp"/>`;
   // подушки спинки
   const L=arms.includes("L")?BW+4:0, R=arms.includes("R")?BW+4:0;
   if(back==="TR"){ s+=cush(4,3,CC,CT)+cush(w-CT-3,4,CT,CC,1); }
