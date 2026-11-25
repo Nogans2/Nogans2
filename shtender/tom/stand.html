@@ -147,7 +147,7 @@ function piece(p){
   for(const xx of xs) for(const y2 of ys) s+=`<circle cx="${xx}" cy="${y2}" r="2.6" class="dp"/>`;
   // подушки спинки
   const L=arms.includes("L")?BW+4:0, R=arms.includes("R")?BW+4:0;
-  if(back==="TR"){ s+=cush(4,3,CC,CT)+cush(w-CT-3,4,CT,CC,1); }
+  if(back==="TR"){ /* спинки угол об угол: правый-нижний угол верхней касается левого-верхнего угла боковой */ const hx=w-CT-3-CC; s+=cush(hx,3,CC,CT)+cush(w-CT-3,3+CT,CT,CC,1); }
   else {
     if(back.includes("T")){ const avail=w-L-R-6, n=Math.max(1,Math.round((w-20)/95)), cw2=Math.min(CB,(avail-(n-1)*5)/n), tot=n*cw2+(n-1)*5, x0=L+3+(avail-tot)/2;
       for(let i=0;i<n;i++) s+=cush(x0+i*(cw2+5),3,cw2,CT); }
