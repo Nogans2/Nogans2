@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Штендер Tim v2</title>
+<style>
+@font-face{font-family:Montserrat;font-weight:400;src:url(fonts/montserrat-cyrillic-400-normal.woff2) format('woff2');unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Montserrat;font-weight:400;src:url(fonts/montserrat-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Montserrat;font-weight:500;src:url(fonts/montserrat-cyrillic-500-normal.woff2) format('woff2');unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Montserrat;font-weight:500;src:url(fonts/montserrat-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Montserrat;font-weight:600;src:url(fonts/montserrat-cyrillic-600-normal.woff2) format('woff2');unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Montserrat;font-weight:600;src:url(fonts/montserrat-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Montserrat;font-weight:700;src:url(fonts/montserrat-cyrillic-700-normal.woff2) format('woff2');unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Montserrat;font-weight:700;src:url(fonts/montserrat-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+@font-face{font-family:Montserrat;font-weight:800;src:url(fonts/montserrat-cyrillic-800-normal.woff2) format('woff2');unicode-range:U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Montserrat;font-weight:800;src:url(fonts/montserrat-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2212}
+
+:root{--ink:#2a2724;--mute:#77706a;--acc:#c4553a;--line:#e3dcd3;--warm:#f7f3ee}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Montserrat,sans-serif;color:var(--ink);background:#fff}
+.page{width:600px;height:1600px;position:relative;overflow:hidden;background:#fff}
+.head{display:flex;align-items:center;justify-content:space-between;padding:30px 40px 0}
+.sg{display:flex;align-items:center;gap:10px}
+.sg .c{width:44px;height:44px;border:2px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-weight:500;font-size:18px}
+.sg b{display:block;font-weight:700;font-size:24px;line-height:1}
+.sg small,.ash small{display:block;font-size:9px;font-weight:600;letter-spacing:1.5px;margin-top:4px}
+.ash{display:flex;align-items:center;gap:10px}
+.ash b{display:block;font-weight:500;font-size:26px;letter-spacing:2px;line-height:1}
+.ash small{color:var(--mute);font-weight:500}
+.title{display:flex;align-items:flex-end;justify-content:space-between;margin:36px 40px 0;padding-bottom:16px;border-bottom:2px solid var(--ink)}
+.kick{font-weight:600;font-size:15px;letter-spacing:6px;color:var(--mute)}
+.name{font-weight:800;font-size:96px;line-height:.9;letter-spacing:3px;margin-top:6px}
+.tr{text-align:right}
+.sub{font-weight:700;font-size:34px;color:var(--acc);line-height:1.1}
+.tag{font-size:15px;font-weight:500;color:var(--mute);margin-top:6px}
+.sec{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:20px 40px 8px}
+.sec h2{font-size:24px;font-weight:800;letter-spacing:.5px;white-space:nowrap}
+.sec span{font-size:12px;color:var(--mute);font-weight:500}
+.sec em{font-style:normal;color:var(--acc);font-weight:700}
+.grid{display:grid;margin:0 40px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.mod{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cmb{grid-template-columns:repeat(6,1fr)}
+.cmb .card{grid-column:span 2}
+.cmb .card.w3{grid-column:span 3}
+.cmb .card.tall{height:236px}
+.cmb .card.flat{height:150px}
+.card{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 8px 12px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.mod .card{height:156px;padding:8px 6px}
+.mod .draw{flex:none;height:100px}
+.mod .card h5{font-size:11px;margin-top:6px}
+.mod .dim .w,.mod .dim .d{font-size:10px}
+.cmb .card{height:200px}
+.draw{flex:1;display:flex;align-items:center;justify-content:center}
+.dim{display:inline-grid;grid-template-columns:auto auto;align-items:center}
+.dim .w{grid-column:1;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;color:var(--mute);margin-bottom:3px}
+.dim .w:before,.dim .w:after{content:"";flex:1;height:1px;background:#b8afa5}
+.dim .d{grid-column:2;grid-row:2;align-self:stretch;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--mute);margin-left:6px}
+.dim .d:before,.dim .d:after{content:"";flex:1;width:1px;background:#b8afa5}
+.dim svg{grid-column:1;grid-row:2;display:block;overflow:visible}
+.card h5{font-size:12px;font-weight:600;line-height:1.25;margin-top:8px}
+.lr{position:absolute;top:8px;right:8px;font-size:9.5px;font-weight:700;color:var(--acc);border:1.2px solid var(--acc);border-radius:4px;padding:1px 4px}
+.feat{display:grid;grid-template-columns:repeat(5,1fr);margin:18px 40px 0;background:var(--warm);border-radius:16px;padding:16px 6px}
+.f{text-align:center;padding:0 4px}
+.f svg{width:32px;height:32px;stroke:var(--acc);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.f h4{font-size:12.5px;font-weight:700;margin-top:6px;line-height:1.2}
+.f p{font-size:11px;color:var(--mute);margin-top:3px;line-height:1.25}
+.photo{position:absolute;left:0;right:0;bottom:0;height:300px}
+.photo img{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);width:570px;mix-blend-mode:multiply}
+.foot{position:absolute;left:0;right:0;bottom:0;height:86px;background:var(--warm);color:var(--ink);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 40px}
+.foot .sg .c{border-color:var(--ink)}
+.foot .ash small{color:var(--mute)}
+.foot>b{font-size:13px;font-weight:600;color:var(--mute);letter-spacing:3px;text-align:center;line-height:1.5}
+.cmb .card h5{font-size:22px;font-weight:800;color:var(--acc);letter-spacing:1px;margin-top:6px}
+.opt{display:flex;align-items:center;gap:16px;margin:14px 40px 0;padding:12px 14px 12px 18px;border:1.5px solid #d6b38a;border-radius:12px}
+.opt .ot{flex:1}
+.opt>img{width:380px;display:block;mix-blend-mode:multiply}
+.opt .sws{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.opt .sws em{font-style:normal;font-size:12px;font-weight:600;color:#8a6440;margin-left:4px}
+.opt .sw{display:block;width:36px;height:36px;flex:none}
+.opt b{display:block;font-size:15px;line-height:1.25;font-weight:700}
+.opt span{display:block;font-size:12px;color:var(--mute);margin-top:2px}
+.wood{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:10px;font-weight:600;color:#8a6440;line-height:1.2;text-align:left}
+.wood i{width:14px;height:14px;flex:none;border-radius:3px;background:repeating-linear-gradient(100deg,#d6b38a 0 2px,#c9a274 2px 3px,#dcbd96 3px 6px);border:1px solid #8a6440}
+.wb{position:absolute;top:8px;left:8px;width:18px;height:18px;border:1.2px solid #8a6440;border-radius:4px;background:repeating-linear-gradient(100deg,#e2c49e 0 3px,#d6b38a 3px 4px,#e8cfae 4px 8px)}
+.wb.s{position:static;display:inline-block;vertical-align:-4px;width:15px;height:15px}
+.ashl{height:50px;display:block;mix-blend-mode:multiply}
+.sgw b{display:block;font-weight:700;font-size:34px;letter-spacing:-.8px;line-height:.95;color:var(--ink)}
+.sgw small{display:block;font-size:13px;font-weight:500;color:var(--ink);margin-top:1px}
+.sgl{height:42px;display:block}
+.sec .r2{text-align:right;line-height:1.35;align-self:flex-end}
+
+/* --- 60x160 --- */
+.head,.title{margin-left:30px!important;margin-right:30px!important}
+.feat,.sec,.grid,.opt,.trf{margin-left:30px!important;margin-right:30px!important}
+.foot{padding:0 30px!important;height:76px!important}
+.foot .sg .c{width:32px;height:32px;font-size:13px}
+.sgl{height:30px!important}
+.ashl{height:34px!important}
+.foot>b{font-size:9.5px!important;letter-spacing:2px!important;white-space:nowrap}
+.sec h2{font-size:22px!important}
+.sec span{font-size:11px!important}
+.name{font-size:84px!important}
+.sub{font-size:30px!important}
+.tag{font-size:13px!important}
+.f h4{font-size:11px!important}.f p{font-size:10px!important}
+
+.opt>img{width:230px!important}
+.opt{gap:10px!important;padding:10px 10px 10px 14px!important}
+.opt b{font-size:13px!important}.opt span{font-size:11px!important}
+.opt .sw{width:28px!important;height:28px!important}
+.opt .sws em{font-size:11px!important;white-space:nowrap}
+.mod .card{height:162px!important;padding:6px 4px!important}
+.mod .draw{height:104px!important}
+.mod .card h5{font-size:10px!important}
+.cmb .card.tall{height:246px!important}
+.cmb .card.flat{height:132px!important}
+.cmb .card{height:200px}
+</style></head>
+<body><div class="page">
+<div class="title">
+  <div><div class="kick">МОДУЛЬНЫЙ ДИВАН</div><div class="name">TIM</div></div>
+  <div class="tr"><div class="sub">Собери<br>свой</div><div class="tag">Гибкая конфигурация.<br>Комфортная посадка.</div></div>
+</div>
+
+<div class="feat">
+  <div class="f"><svg viewBox="0 0 40 40"><path d="M20 6 5 13l15 7 15-7z"/><path d="m5 20 15 7 15-7"/><path d="m5 27 15 7 15-7"/></svg><h4>Наполнение<br>сиденья</h4><p>Пена, ремни<br>и дакрон</p></div>
+  <div class="f"><svg viewBox="0 0 40 40"><path d="M32 5C18 7 10 17 9 33"/><path d="M32 5c1 12-6 21-17 22"/><path d="M14 22h8M18 15h8"/></svg><h4>Наполнение<br>подушек</h4><p>Перо</p></div>
+  <div class="f"><svg viewBox="0 0 40 40"><rect x="6" y="8" width="28" height="24" rx="4"/><path d="M6 15h28"/><path d="m15 23 4 4 7-8"/></svg><h4>100% съёмные<br>чехлы</h4><p>Легко<br>ухаживать</p></div>
+  <div class="f"><svg viewBox="0 0 40 40"><ellipse cx="20" cy="8" rx="11" ry="3.5"/><ellipse cx="20" cy="16" rx="11" ry="3.5"/><ellipse cx="20" cy="24" rx="11" ry="3.5"/><ellipse cx="20" cy="32" rx="11" ry="3.5"/></svg><h4>Конструкция<br>сиденья</h4><p>Пружины, пена<br>и ремни</p></div>
+  <div class="f"><svg viewBox="0 0 40 40"><path d="M8 8h24v24H8z"/><path d="M14 8v24M20 8v24M26 8v24M8 14h24M8 20h24M8 26h24"/></svg><h4>Конструкция<br>спинки</h4><p>Ремни</p></div>
+</div>
+<div class="sec"><h2>Популярные комбинации</h2><span class="r2">Это лишь часть вариантов —<br>собери свой из модулей</span></div>
+<div class="grid cmb" id="cmbs"></div>
+<div class="opt"><div class="ot"><div class="sws"><svg class="sw" viewBox="0 0 34 34"><defs><clipPath id="c1"><rect x=".5" y=".5" width="33" height="33" rx="6"/></clipPath><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".15"/></linearGradient></defs><g clip-path="url(#c1)"><rect width="34" height="34" fill="#dcbb92"/><path d="M-4.0 -2 C-5.5 12 -3.2 24 -5.2 38" stroke="#b48a5e" stroke-width="2.9" opacity="0.44" fill="none"/><path d="M0.1 -2 C-1.8 12 0.0 24 -0.3 38" stroke="#dcbb92" stroke-width="2.8" opacity="0.55" fill="none"/><path d="M3.9 -2 C2.8 12 1.9 24 3.2 38" stroke="#b48a5e" stroke-width="3.6" opacity="0.49" fill="none"/><path d="M8.7 -2 C9.4 12 7.1 24 9.7 38" stroke="#ead2b0" stroke-width="3.5" opacity="0.49" fill="none"/><path d="M13.3 -2 C12.6 12 14.0 24 13.3 38" stroke="#ead2b0" stroke-width="2.4" opacity="0.58" fill="none"/><path d="M16.5 -2 C17.0 12 16.7 24 15.1 38" stroke="#ead2b0" stroke-width="4.3" opacity="0.60" fill="none"/><path d="M20.4 -2 C21.3 12 21.9 24 19.7 38" stroke="#b48a5e" stroke-width="5.4" opacity="0.47" fill="none"/><path d="M27.6 -2 C26.0 12 28.4 24 28.2 38" stroke="#dcbb92" stroke-width="2.5" opacity="0.68" fill="none"/><path d="M30.9 -2 C30.1 12 30.3 24 30.3 38" stroke="#ead2b0" stroke-width="4.0" opacity="0.58" fill="none"/><path d="M36.1 -2 C36.3 12 35.4 24 37.3 38" stroke="#dcbb92" stroke-width="5.4" opacity="0.45" fill="none"/><path d="M-2.0 -2 C-3.7 10 -2.9 22 -2.5 38" stroke="#b48a5e" stroke-width="0.50" opacity="0.59" fill="none"/><path d="M0.6 -2 C-0.8 10 2.1 22 1.4 38" stroke="#b48a5e" stroke-width="0.26" opacity="0.84" fill="none"/><path d="M2.3 -2 C0.9 10 3.3 22 2.0 38" stroke="#b48a5e" stroke-width="0.54" opacity="0.66" fill="none"/><path d="M5.3 -2 C4.0 10 5.5 22 5.1 38" stroke="#b48a5e" stroke-width="0.28" opacity="0.43" fill="none"/><path d="M8.0 -2 C6.3 10 8.6 22 8.6 38" stroke="#b48a5e" stroke-width="0.43" opacity="0.47" fill="none"/><path d="M11.1 -2 C11.0 10 9.8 22 11.3 38" stroke="#b48a5e" stroke-width="0.32" opacity="0.81" fill="none"/><path d="M13.1 -2 C13.7 10 11.7 22 12.6 38" stroke="#b48a5e" stroke-width="0.36" opacity="0.56" fill="none"/><path d="M15.7 -2 C15.7 10 14.1 22 15.9 38" stroke="#b48a5e" stroke-width="0.56" opacity="0.79" fill="none"/><path d="M18.5 -2 C19.6 10 17.3 22 18.1 38" stroke="#b48a5e" stroke-width="0.40" opacity="0.45" fill="none"/><path d="M20.3 -2 C19.3 10 21.4 22 21.0 38" stroke="#b48a5e" stroke-width="0.38" opacity="0.45" fill="none"/><path d="M23.0 -2 C23.5 10 23.8 22 23.0 38" stroke="#b48a5e" stroke-width="0.28" opacity="0.82" fill="none"/><path d="M25.4 -2 C26.5 10 25.2 22 24.3 38" stroke="#b48a5e" stroke-width="0.27" opacity="0.45" fill="none"/><path d="M27.2 -2 C25.4 10 27.5 22 28.1 38" stroke="#b48a5e" stroke-width="0.48" opacity="0.77" fill="none"/><path d="M29.5 -2 C31.2 10 30.4 22 29.8 38" stroke="#b48a5e" stroke-width="0.54" opacity="0.66" fill="none"/><path d="M31.8 -2 C31.2 10 31.4 22 31.9 38" stroke="#b48a5e" stroke-width="0.32" opacity="0.53" fill="none"/><path d="M33.7 -2 C32.2 10 33.1 22 34.7 38" stroke="#b48a5e" stroke-width="0.39" opacity="0.68" fill="none"/><path d="M35.3 -2 C35.0 10 36.2 22 36.0 38" stroke="#b48a5e" stroke-width="0.51" opacity="0.54" fill="none"/><path d="M37.2 -2 C38.4 10 36.7 22 38.2 38" stroke="#b48a5e" stroke-width="0.48" opacity="0.45" fill="none"/><rect width="34" height="34" fill="url(#g1)"/></g><rect x=".5" y=".5" width="33" height="33" rx="6" fill="none" stroke="#9a7149" stroke-width="1"/></svg><svg class="sw" viewBox="0 0 34 34"><defs><clipPath id="c2"><rect x=".5" y=".5" width="33" height="33" rx="6"/></clipPath><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".15"/></linearGradient></defs><g clip-path="url(#c2)"><rect width="34" height="34" fill="#8a5a3b"/><path d="M-4.0 -2 C-4.9 12 -5.3 24 -3.5 38" stroke="#5e3a22" stroke-width="3.9" opacity="0.47" fill="none"/><path d="M0.2 -2 C0.4 12 0.6 24 -1.2 38" stroke="#5e3a22" stroke-width="4.4" opacity="0.48" fill="none"/><path d="M5.6 -2 C5.2 12 4.2 24 4.2 38" stroke="#8a5a3b" stroke-width="3.8" opacity="0.40" fill="none"/><path d="M10.6 -2 C11.7 12 10.1 24 11.3 38" stroke="#a8754f" stroke-width="6.0" opacity="0.39" fill="none"/><path d="M16.4 -2 C17.6 12 18.0 24 17.2 38" stroke="#8a5a3b" stroke-width="4.7" opacity="0.67" fill="none"/><path d="M21.3 -2 C20.1 12 22.8 24 22.4 38" stroke="#a8754f" stroke-width="3.4" opacity="0.37" fill="none"/><path d="M24.7 -2 C23.7 12 25.7 24 25.8 38" stroke="#a8754f" stroke-width="4.0" opacity="0.69" fill="none"/><path d="M27.9 -2 C29.5 12 26.7 24 26.4 38" stroke="#a8754f" stroke-width="5.1" opacity="0.38" fill="none"/><path d="M33.6 -2 C33.9 12 33.8 24 32.7 38" stroke="#a8754f" stroke-width="2.1" opacity="0.37" fill="none"/><path d="M35.5 -2 C35.8 12 34.2 24 35.8 38" stroke="#8a5a3b" stroke-width="5.1" opacity="0.69" fill="none"/><path d="M39.7 -2 C41.1 12 40.7 24 40.4 38" stroke="#8a5a3b" stroke-width="4.2" opacity="0.55" fill="none"/><path d="M-2.0 -2 C-0.7 10 -2.4 22 -1.0 38" stroke="#5e3a22" stroke-width="0.31" opacity="0.63" fill="none"/><path d="M0.7 -2 C2.0 10 0.8 22 0.9 38" stroke="#5e3a22" stroke-width="0.49" opacity="0.79" fill="none"/><path d="M2.3 -2 C3.7 10 1.8 22 1.6 38" stroke="#5e3a22" stroke-width="0.32" opacity="0.83" fill="none"/><path d="M5.1 -2 C4.6 10 5.5 22 3.9 38" stroke="#5e3a22" stroke-width="0.29" opacity="0.50" fill="none"/><path d="M7.0 -2 C8.1 10 6.3 22 6.4 38" stroke="#5e3a22" stroke-width="0.43" opacity="0.42" fill="none"/><path d="M9.0 -2 C9.3 10 8.8 22 8.7 38" stroke="#5e3a22" stroke-width="0.52" opacity="0.65" fill="none"/><path d="M10.6 -2 C11.1 10 9.1 22 11.2 38" stroke="#5e3a22" stroke-width="0.43" opacity="0.83" fill="none"/><path d="M13.0 -2 C11.7 10 12.2 22 13.4 38" stroke="#5e3a22" stroke-width="0.56" opacity="0.41" fill="none"/><path d="M16.1 -2 C17.2 10 15.2 22 15.3 38" stroke="#5e3a22" stroke-width="0.29" opacity="0.47" fill="none"/><path d="M17.5 -2 C17.4 10 18.6 22 17.1 38" stroke="#5e3a22" stroke-width="0.26" opacity="0.76" fill="none"/><path d="M19.5 -2 C19.4 10 18.7 22 20.6 38" stroke="#5e3a22" stroke-width="0.51" opacity="0.53" fill="none"/><path d="M21.1 -2 C20.8 10 19.8 22 21.2 38" stroke="#5e3a22" stroke-width="0.53" opacity="0.66" fill="none"/><path d="M23.9 -2 C24.5 10 23.1 22 24.1 38" stroke="#5e3a22" stroke-width="0.46" opacity="0.56" fill="none"/><path d="M27.0 -2 C26.2 10 25.6 22 27.7 38" stroke="#5e3a22" stroke-width="0.54" opacity="0.47" fill="none"/><path d="M29.8 -2 C31.1 10 28.7 22 29.7 38" stroke="#5e3a22" stroke-width="0.46" opacity="0.65" fill="none"/><path d="M31.3 -2 C31.5 10 31.7 22 30.8 38" stroke="#5e3a22" stroke-width="0.27" opacity="0.69" fill="none"/><path d="M33.8 -2 C34.1 10 33.6 22 33.3 38" stroke="#5e3a22" stroke-width="0.43" opacity="0.69" fill="none"/><path d="M36.6 -2 C38.0 10 36.9 22 37.7 38" stroke="#5e3a22" stroke-width="0.27" opacity="0.50" fill="none"/><rect width="34" height="34" fill="url(#g2)"/></g><rect x=".5" y=".5" width="33" height="33" rx="6" fill="none" stroke="#5a3820" stroke-width="1"/></svg><svg class="sw" viewBox="0 0 34 34"><defs><clipPath id="c3"><rect x=".5" y=".5" width="33" height="33" rx="6"/></clipPath><linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".15"/></linearGradient></defs><g clip-path="url(#c3)"><rect width="34" height="34" fill="#382923"/><path d="M-4.0 -2 C-4.1 12 -5.9 24 -4.1 38" stroke="#1c1310" stroke-width="4.3" opacity="0.52" fill="none"/><path d="M0.1 -2 C0.2 12 -0.5 24 -0.6 38" stroke="#4f3d33" stroke-width="5.2" opacity="0.68" fill="none"/><path d="M7.5 -2 C7.9 12 7.0 24 6.8 38" stroke="#4f3d33" stroke-width="2.2" opacity="0.59" fill="none"/><path d="M9.8 -2 C9.3 12 9.6 24 10.9 38" stroke="#382923" stroke-width="4.7" opacity="0.43" fill="none"/><path d="M14.9 -2 C12.9 12 13.4 24 16.2 38" stroke="#382923" stroke-width="3.5" opacity="0.46" fill="none"/><path d="M18.4 -2 C19.1 12 18.2 24 18.3 38" stroke="#1c1310" stroke-width="5.6" opacity="0.58" fill="none"/><path d="M24.0 -2 C25.9 12 22.9 24 22.6 38" stroke="#4f3d33" stroke-width="4.0" opacity="0.46" fill="none"/><path d="M28.7 -2 C27.3 12 28.9 24 28.3 38" stroke="#4f3d33" stroke-width="2.3" opacity="0.56" fill="none"/><path d="M30.6 -2 C30.4 12 32.6 24 29.7 38" stroke="#4f3d33" stroke-width="5.1" opacity="0.47" fill="none"/><path d="M37.7 -2 C36.8 12 38.2 24 36.7 38" stroke="#382923" stroke-width="3.8" opacity="0.39" fill="none"/><path d="M-2.0 -2 C-3.2 10 -1.5 22 -1.2 38" stroke="#1c1310" stroke-width="0.52" opacity="0.62" fill="none"/><path d="M0.0 -2 C-0.2 10 -1.8 22 0.5 38" stroke="#1c1310" stroke-width="0.37" opacity="0.54" fill="none"/><path d="M1.6 -2 C1.4 10 1.9 22 1.3 38" stroke="#1c1310" stroke-width="0.55" opacity="0.70" fill="none"/><path d="M3.4 -2 C3.5 10 4.9 22 3.5 38" stroke="#1c1310" stroke-width="0.46" opacity="0.43" fill="none"/><path d="M5.7 -2 C5.5 10 5.3 22 5.5 38" stroke="#1c1310" stroke-width="0.45" opacity="0.64" fill="none"/><path d="M8.0 -2 C6.8 10 7.8 22 9.1 38" stroke="#1c1310" stroke-width="0.40" opacity="0.42" fill="none"/><path d="M9.4 -2 C9.5 10 7.8 22 8.4 38" stroke="#1c1310" stroke-width="0.29" opacity="0.60" fill="none"/><path d="M12.6 -2 C12.5 10 12.4 22 12.4 38" stroke="#1c1310" stroke-width="0.43" opacity="0.60" fill="none"/><path d="M15.3 -2 C16.7 10 16.0 22 15.1 38" stroke="#1c1310" stroke-width="0.48" opacity="0.81" fill="none"/><path d="M16.9 -2 C16.0 10 17.4 22 17.4 38" stroke="#1c1310" stroke-width="0.47" opacity="0.66" fill="none"/><path d="M19.8 -2 C19.8 10 20.9 22 20.9 38" stroke="#1c1310" stroke-width="0.40" opacity="0.79" fill="none"/><path d="M22.5 -2 C23.9 10 20.9 22 23.5 38" stroke="#1c1310" stroke-width="0.52" opacity="0.83" fill="none"/><path d="M25.7 -2 C24.9 10 26.3 22 24.8 38" stroke="#1c1310" stroke-width="0.46" opacity="0.81" fill="none"/><path d="M27.4 -2 C26.9 10 25.9 22 26.7 38" stroke="#1c1310" stroke-width="0.32" opacity="0.44" fill="none"/><path d="M30.6 -2 C32.0 10 30.5 22 31.2 38" stroke="#1c1310" stroke-width="0.49" opacity="0.64" fill="none"/><path d="M32.8 -2 C33.4 10 33.0 22 32.2 38" stroke="#1c1310" stroke-width="0.38" opacity="0.68" fill="none"/><path d="M35.3 -2 C34.3 10 35.7 22 36.2 38" stroke="#1c1310" stroke-width="0.55" opacity="0.69" fill="none"/><path d="M36.9 -2 C36.6 10 35.4 22 35.8 38" stroke="#1c1310" stroke-width="0.34" opacity="0.61" fill="none"/><rect width="34" height="34" fill="url(#g3)"/></g><rect x=".5" y=".5" width="33" height="33" rx="6" fill="none" stroke="#1e1512" stroke-width="1"/></svg><em>3 цвета дерева</em></div><b>Также доступно исполнение с деревянными подлокотниками</b><span>и столиком-тумбой с ящиком —<br>спроси у&nbsp;консультанта</span></div><img src="sofa_wood.jpg"></div>
+<div class="sec"><h2>Модули</h2><span>Размеры в см</span></div>
+<div class="grid mod" id="mods"></div>
+
+
+<div class="foot"><div class="sg"><div class="c">SG</div><img class="sgl" src="sg_logo.png"></div><b>ВАШ ДОМ.<br>НАША МЕБЕЛЬ.</b><img class="ashl" src="ashley_logo.png"></div>
+</div>
+<script>
+const BK=18, AR=16;
+function piece(p){
+  const {x,y,w,d}=p, back=p.back??"T", arms=p.arms||"";
+  if(p.table){return `<rect x="${x}" y="${y}" width="${w}" height="${d}" rx="3" class="wd"/><rect x="${x+6}" y="${y+d*0.35}" width="${w-12}" height="${d*0.3}" rx="2" class="wdl"/>`}
+  let s=`<rect x="${x}" y="${y}" width="${w}" height="${d}" rx="6" class="o"/>`;
+  let ix=x, iy=y, iw=w, id=d;
+  if(back.includes("T")){s+=`<rect x="${x+3}" y="${y+3}" width="${w-6}" height="${BK}" rx="7" class="b"/>`; iy+=BK+3; id-=BK+3;}
+  if(back.includes("L")){s+=`<rect x="${x+3}" y="${y+3}" width="${BK}" height="${d-6}" rx="7" class="b"/>`; ix+=BK+3; iw-=BK+3;}
+  if(back.includes("R")){s+=`<rect x="${x+w-BK-3}" y="${y+3}" width="${BK}" height="${d-6}" rx="7" class="b"/>`; iw-=BK+3;}
+  const wood=p.wood;
+  const arm=(ax,ay,aw,ad)=> wood? `<rect x="${ax}" y="${ay}" width="${aw}" height="${ad}" rx="2" class="wd"/>` : `<rect x="${ax}" y="${ay}" width="${aw}" height="${ad}" rx="5" class="a"/>`;
+  const AL=d>130? d-45 : d-20;
+  if(arms.includes("L")){s+=arm(x+3,y+3,AR,AL); ix+=AR+3; iw-=AR+3;}
+  if(arms.includes("R")){s+=arm(x+w-AR-3,y+3,AR,AL); iw-=AR+3;}
+  if(arms.includes("B")){const AL2=Math.min(w,116)-20; const ax=back.includes("L")? x+3 : x+w-3-AL2; s+=arm(ax,y+d-AR-3,AL2,AR); id-=AR+3;}
+  const n=p.seats||1, g=3;
+  for(let i=0;i<n;i++){
+    if(p.vert){const h=(id-g)/n; s+=`<rect x="${ix+g}" y="${iy+i*h+g}" width="${iw-2*g}" height="${h-g}" rx="7" class="s"/>`;}
+    else{const ww=(iw-g)/n; s+=`<rect x="${ix+i*ww+g}" y="${iy+g}" width="${ww-g}" height="${id-2*g}" rx="7" class="s"/>`;}
+  }
+  return s;
+}
+function drawing(W,D,parts,scale){
+  const svg=`<svg width="${W*scale}" height="${D*scale}" viewBox="0 0 ${W} ${D}">
+  <style>.o{fill:#fff;stroke:#2a2724;stroke-width:1.4;vector-effect:non-scaling-stroke}
+  .b,.a{fill:#efe9e2;stroke:#8c837a;stroke-width:1;vector-effect:non-scaling-stroke}
+  .s{fill:#fff;stroke:#8c837a;stroke-width:1;vector-effect:non-scaling-stroke}
+  .wd{fill:#d6b38a;stroke:#8a6440;stroke-width:1.2;vector-effect:non-scaling-stroke}
+  .wdl{fill:none;stroke:#8a6440;stroke-width:1;vector-effect:non-scaling-stroke}</style>
+  ${parts.map(piece).join("")}</svg>`;
+  return `<div class="dim"><div class="w">${W}</div>${svg}<div class="d">${D}</div></div>`;
+}
+const card=(c,s)=>`<div class="card ${c.cls||''}"><div class="draw">${drawing(c.W,c.D,c.parts,s)}</div><div class="txt"><h5>${c.t}</h5></div></div>`;
+const mods=[
+ {t:"Диван 1,5-местный<br>без подлокотников",W:98,D:115,parts:[{x:0,y:0,w:98,d:115}]},
+ {t:"Диван 1,5-местный<br>с подлокотником",W:115,D:115,parts:[{x:0,y:0,w:115,d:115,arms:"L"}]},
+ {t:"Диван 3-местный<br>с подлокотником",W:212,D:115,parts:[{x:0,y:0,w:212,d:115,arms:"L",seats:2}]},
+ {t:"Диван 3-местный<br>с двумя подлокотниками",W:231,D:115,parts:[{x:0,y:0,w:231,d:115,arms:"LR",seats:2}]},
+ {t:"Угловой<br>модуль",W:115,D:115,parts:[{x:0,y:0,w:115,d:115,back:"TR"}]},
+ {t:"Шезлонг<br>удлинённый",W:115,D:210,parts:[{x:0,y:0,w:115,d:210,arms:"R"}]},
+ {t:"Шезлонг",W:115,D:164,parts:[{x:0,y:0,w:115,d:164,arms:"R"}]},
+ {t:"Пуф",W:80,D:80,parts:[{x:0,y:0,w:80,d:80,back:""}]},
+];
+const cmbs=[
+ {t:"C1",W:327,D:210,parts:[{x:0,y:0,w:212,d:115,arms:"L",seats:2},{x:212,y:0,w:115,d:210,arms:"R"}]},
+ {t:"C2",W:327,D:164,parts:[{x:0,y:0,w:212,d:115,arms:"L",seats:2},{x:212,y:0,w:115,d:164,arms:"R"}]},
+ {t:"C3",W:426,D:164,parts:[{x:0,y:0,w:115,d:164,arms:"L"},{x:115,y:0,w:98,d:115},{x:213,y:0,w:98,d:115},{x:311,y:0,w:115,d:164,arms:"R"}]},
+ {cls:"w3 tall",t:"C4",W:327,D:327,parts:[{x:0,y:0,w:212,d:115,arms:"L",seats:2},{x:212,y:0,w:115,d:115,back:"TR"},{x:212,y:115,w:115,d:212,back:"R",arms:"B",seats:2,vert:1}]},
+ {cls:"w3 tall",t:"C5",W:327,D:425,parts:[{x:0,y:0,w:212,d:115,arms:"L",seats:2},{x:212,y:0,w:115,d:115,back:"TR"},{x:212,y:115,w:115,d:98,back:"R",vert:1},{x:212,y:213,w:115,d:212,back:"R",arms:"B",seats:2,vert:1}]},
+ {cls:"w3 flat",t:"C6",W:424,D:115,parts:[{x:0,y:0,w:212,d:115,arms:"L",seats:2},{x:212,y:0,w:212,d:115,arms:"R",seats:2}]},
+ {cls:"w3 flat",t:"C7",W:328,D:115,parts:[{x:0,y:0,w:115,d:115,back:"TL"},{x:115,y:0,w:98,d:115},{x:213,y:0,w:115,d:115,back:"TR"}]},
+];
+document.getElementById("mods").innerHTML=mods.map(c=>card(c,.37)).join("");
+document.getElementById("cmbs").innerHTML=cmbs.map(c=>card(c,.36)).join("");
+</script></body></html>
