@@ -134,8 +134,12 @@ function piece(p){
   // стёжка: подушечки-квадраты по всей платформе
   const cols=Math.max(1,Math.round(w/52)), cw=w/cols;
   const rowsH = back.includes("T") ? [d*0.27, d*0.365, d*0.365] : (d>130 ? [d/3,d/3,d/3] : [d/2,d/2]);
-  let yy=0;
-  for(const rh of rowsH){ for(let i=0;i<cols;i++) s+=`<rect x="${i*cw+g}" y="${yy+g}" width="${cw-2*g}" height="${rh-2*g}" rx="11" class="s"/>`; yy+=rh; }
+  // клетки: швы-впадины + углубления на пересечениях
+  let yy=0; const ys=[];
+  for(const rh of rowsH){ yy+=rh; ys.push(yy); } ys.pop();
+  for(let i=1;i<cols;i++){const xx=i*cw; s+=`<line x1="${xx}" y1="3" x2="${xx}" y2="${d-3}" class="sm"/><line x1="${xx}" y1="3" x2="${xx}" y2="${d-3}" class="sl"/>`;}
+  for(const y2 of ys){ s+=`<line x1="3" y1="${y2}" x2="${w-3}" y2="${y2}" class="sm"/><line x1="3" y1="${y2}" x2="${w-3}" y2="${y2}" class="sl"/>`;}
+  for(let i=1;i<cols;i++) for(const y2 of ys) s+=`<circle cx="${i*cw}" cy="${y2}" r="2.6" class="dp"/>`;
   // подушки спинки
   const L=arms.includes("L")?BW+4:0, R=arms.includes("R")?BW+4:0;
   if(back==="TR"){ s+=cush(4,3,CC,CT)+cush(w-CT-3,4,CT,CC,1); }
@@ -156,6 +160,9 @@ function drawing(W,D,parts,scale){
   <style>.o{fill:#fff;stroke:#2a2724;stroke-width:1.4;vector-effect:non-scaling-stroke}
   .b,.a{fill:#ece5dc;stroke:#6f675f;stroke-width:1.1;vector-effect:non-scaling-stroke}
   .s{fill:#fff;stroke:#bdb4aa;stroke-width:.9;vector-effect:non-scaling-stroke}
+  .sm{stroke:#e6dfd6;stroke-width:4}
+  .sl{stroke:#9d948a;stroke-width:.9;vector-effect:non-scaling-stroke}
+  .dp{fill:#8c837a}
   .t{stroke:#a59c93;stroke-width:.8;vector-effect:non-scaling-stroke}
   .wd{fill:#d6b38a;stroke:#8a6440;stroke-width:1.2;vector-effect:non-scaling-stroke}
   .wdl{fill:none;stroke:#8a6440;stroke-width:1;vector-effect:non-scaling-stroke}</style>
