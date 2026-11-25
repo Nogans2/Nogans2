@@ -35,7 +35,7 @@ body{font-family:Montserrat,sans-serif;color:var(--ink);background:#fff}
 .sec span{font-size:12px;color:var(--mute);font-weight:500}
 .sec em{font-style:normal;color:var(--acc);font-weight:700}
 .grid{display:grid;margin:0 40px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
-.mod{grid-template-columns:repeat(5,minmax(0,1fr))}
+.mod{grid-template-columns:repeat(6,minmax(0,1fr))}
 .cmb{grid-template-columns:repeat(6,1fr)}
 .cmb .card{grid-column:span 2}
 .cmb .card.w3{grid-column:span 3}
@@ -43,9 +43,9 @@ body{font-family:Montserrat,sans-serif;color:var(--ink);background:#fff}
 .cmb .card.tall{height:236px}
 .cmb .card.flat{height:176px}
 .card{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 8px 12px;display:flex;flex-direction:column;align-items:center;text-align:center}
-.mod .card{height:170px;padding:8px 6px}
-.mod .draw{flex:none;height:100px}
-.mod .card h5{font-size:11px;margin-top:6px}
+.mod .card{height:150px;padding:6px 3px}
+.mod .draw{flex:none;height:90px}
+.mod .card h5{font-size:9.5px;margin-top:5px}
 .mod .dim .w,.mod .dim .d{font-size:10px}
 .cmb .card{height:222px}
 .draw{flex:1;display:flex;align-items:center;justify-content:center}
@@ -92,7 +92,7 @@ body{font-family:Montserrat,sans-serif;color:var(--ink);background:#fff}
 .tc img{width:100%;height:120px;object-fit:cover;border-radius:8px;display:block}
 .tc p{font-size:11px;color:var(--mute);margin-top:6px;line-height:1.3}
 .tc p b{display:block;font-size:12.5px;color:var(--ink);font-weight:700}
-.hero{position:absolute;left:40px;right:40px;bottom:100px;height:240px;border-radius:12px;background:url(hero.jpg) center 45%/cover}
+.hero{position:absolute;left:40px;right:40px;bottom:96px;height:250px;border-radius:0;background:url(sofa_white.jpg) center/contain no-repeat}
 </style></head>
 <body><div class="page">
 <div class="title">
@@ -176,11 +176,12 @@ function drawing(W,D,parts,scale){
 }
 const card=(c,s)=>`<div class="card ${c.cls||''}"><div class="draw">${drawing(c.W,c.D,c.parts,s)}</div><div class="txt"><h5>${c.t}</h5></div></div>`;
 const mods=[
+ {t:"Диван 2,5-местный<br>с двумя подл.",W:207,D:108,parts:[{x:0,y:0,w:207,d:108,arms:"LR"}]},
+ {t:"Диван 3,5-местный<br>с двумя подл.",W:236,D:108,parts:[{x:0,y:0,w:236,d:108,arms:"LR"}]},
  {t:"Диван 3,5-местный<br>с подлокотником",W:204,D:108,parts:[{x:0,y:0,w:204,d:108,arms:"L"}]},
  {t:"Диван 1,5-местный<br>без подлокотников",W:88,D:108,parts:[{x:0,y:0,w:88,d:108}]},
  {t:"Угловой<br>модуль",W:108,D:108,parts:[{x:0,y:0,w:108,d:108,back:"TR"}]},
- {t:"Шезлонг",W:108,D:161,parts:[{x:0,y:0,w:108,d:161,back:"",pillow:1}]},
- {t:"Пуф",W:108,D:108,parts:[{x:0,y:0,w:108,d:108,back:""}]},
+ {t:"Шезлонг (CL)",W:108,D:161,parts:[{x:0,y:0,w:108,d:161,back:"",pillow:1}]},
 ];
 const cmbs=[
  {t:"C1",W:312,D:269,parts:[{x:0,y:0,w:204,d:108,arms:"L"},{x:204,y:0,w:108,d:108,back:"TR"},{x:204,y:108,w:108,d:161,back:"",pillow:1}]},
@@ -190,6 +191,6 @@ const cmbs=[
  {t:"C5",W:312,D:108,parts:[{x:0,y:0,w:204,d:108,arms:"L"},{x:204,y:0,w:108,d:108,back:"TR"}]},
  {t:"C6",W:408,D:108,parts:[{x:0,y:0,w:204,d:108,arms:"L"},{x:204,y:0,w:204,d:108,arms:"R"}]},
 ];
-document.getElementById("mods").innerHTML=mods.map(c=>card(c,.38)).join("");
+document.getElementById("mods").innerHTML=mods.map(c=>card(c,.26)).join("");
 document.getElementById("cmbs").innerHTML=cmbs.map(c=>card(c,.42)).join("");
 </script></body></html>
