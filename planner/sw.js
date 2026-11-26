@@ -1,6 +1,6 @@
 /* Планер — offline cache. Pages network-first (so updates arrive), everything else cache-first.
    Only touches caches whose name starts with "planner-" so it never interferes with Пакт. */
-const CACHE = 'planner-v3';
+const CACHE = 'planner-v4';
 const FONTS = 'planner-fonts-v1';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
@@ -26,7 +26,8 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === self.location.origin) {
     if (req.mode === 'navigate') {
       e.respondWith(
-        Promise.race([fetch(req), timeout(4000)])
+        // no-store: always ask GitHub for the newest page, never a browser-cached copy
+        Promise.race([fetch(req.url, { cache: 'no-store', credentials: 'same-origin' }), timeout(8000)])
           .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./index.html', copy)); return res; })
           .catch(() => caches.match('./index.html').then((r) => r || caches.match('./')))
       );

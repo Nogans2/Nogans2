@@ -485,7 +485,7 @@ function toggleBlock(k, id) {
   save();
 }
 // blocks of a weekday that apply on date k (or the current schedule when k is omitted)
-const blocksFor = (i, k) => (D.routine[i] || []).filter((b) => (k ? alive(b, k) : !b.to)).sort((a, b) => tkey(a.time).localeCompare(tkey(b.time)));
+const blocksFor = (i, k) => (D.routine[i] || []).filter((b) => (k ? alive(b, k) : !b.to)).sort((a, b) => { const x = tkey(a.time), y = tkey(b.time); return x < y ? -1 : x > y ? 1 : 0; });
 // times after midnight (before 05:00) belong to the end of the day
 const tkey = (t) => (t < '05:00' ? '~' + t : t);
 function markStart(k) { if (k < D.start) D.start = k; }
@@ -1244,7 +1244,16 @@ async function syncTasks() {
 syncTasks();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncTasks(); });
 window.addEventListener('online', () => syncTasks());
-if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') {
+  // pick up new versions quickly: check on every return to the app and reload once a new one takes over
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { scope: './' }).then((reg) => {
+    reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+}
 </script>
 </body>
 </html>
