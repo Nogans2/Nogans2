@@ -60,6 +60,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("date", nargs="?", help="YYYY-MM-DD (default: today, account time)")
     ap.add_argument("--out", default=".")
+    ap.add_argument("--trips", action="append", default=[],
+                    help="extra trips CSV (e.g. parsed from Ashley invoices); a trip found here replaces "
+                         "the same trip's rows in moysklad/trips.csv")
     args = ap.parse_args()
     day = args.date or datetime.date.today().isoformat()
 
@@ -118,15 +121,24 @@ def main():
                 href = p["assortment"]["meta"]["href"].split("?")[0]
                 transit[href].append({"trip": trip, "qty": left, "eta": eta, "src": f"МойСклад {po['name']} ({st})"})
     trips_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trips.csv")
-    if items and os.path.exists(trips_file):
-        with open(trips_file, encoding="utf-8-sig") as f:
+    by_trip = {}  # trip -> rows; later files override earlier ones for the same trip
+    for fn in [trips_file] + args.trips:
+        if not (items and os.path.exists(fn)):
+            continue
+        cur = collections.defaultdict(list)
+        with open(fn, encoding="utf-8-sig") as f:
             for r in csv.DictReader(f, delimiter=";"):
                 trip = (r.get("trip") or "").strip()
-                art = (r.get("article") or "").strip().upper()
-                if not art or not trip or trip in ms_trips:
-                    continue
-                transit["art:" + art].append({"trip": trip, "qty": float(r.get("qty") or 0),
-                                              "eta": (r.get("eta") or "").strip(), "src": "таблица трипов"})
+                if trip and (r.get("article") or "").strip():
+                    cur[trip].append(r)
+        by_trip.update(cur)
+    for trip, rs in by_trip.items():
+        if trip in ms_trips:
+            continue
+        for r in rs:
+            transit["art:" + r["article"].strip().upper()].append(
+                {"trip": trip, "qty": float(r.get("qty") or 0), "eta": (r.get("eta") or "").strip(),
+                 "src": "инвойс Ashley"})
 
     for it in items.values():
         s = stock.get(it["href"], {})
