@@ -455,6 +455,7 @@ const now0 = today();
 const UI = {
   view: 'overview',
   month: new Date(now0.getFullYear(), now0.getMonth(), 1),
+  hPeriod: null, // habit grid page: 28 days counted from day 1
   taskFilter: 'active', taskCat: 'all',
   rWeek: monday(now0), rDay: wdi(now0)
 };
@@ -488,7 +489,8 @@ function toggleBlock(k, id) {
 const blocksFor = (i, k) => (D.routine[i] || []).filter((b) => (k ? alive(b, k) : !b.to)).sort((a, b) => { const x = tkey(a.time), y = tkey(b.time); return x < y ? -1 : x > y ? 1 : 0; });
 // times after midnight (before 05:00) belong to the end of the day
 const tkey = (t) => (t < '05:00' ? '~' + t : t);
-function markStart(k) { if (k < D.start) D.start = k; }
+// Day 1 is fixed at D.start; ticks on earlier days do not move it
+function markStart() {}
 
 /** Efficiency of one day: average of the parts that exist that day (habits, routine, tasks due). null = nothing to measure. */
 function dayParts(k) {
@@ -599,7 +601,7 @@ function vOverview() {
   const part = (l, d, nn) => `<div class="part"><span>${l}</span><span class="muted">${nn ? `${d} / ${nn}` : '—'}</span><div class="bar"><i style="width:${pct(d, nn)}%"></i></div></div>`;
 
   return `
-  <div class="head"><div><h1 class="title">${WDF[wdi(t)]}, ${t.getDate()} ${MGEN[t.getMonth()]}</h1><div class="sub">Ты превращаешь жизнь в игру. Сегодня — ещё один уровень.</div></div>
+  <div class="head"><div><h1 class="title">${WDF[wdi(t)]}, ${t.getDate()} ${MGEN[t.getMonth()]}</h1><div class="sub">День ${dayNo(tk)} — ты превращаешь жизнь в игру.</div></div>
     <button class="btn ghost sm" data-act="settings">${ICON.gear}Данные</button></div>
   <div class="grid g21">
     <section class="card"><div class="card-h blue">Эффективность сегодня<span class="x">${sc == null ? '' : sc >= 80 ? 'Отличный день' : sc >= 50 ? 'Неплохо, дожми' : 'Есть куда расти'}</span></div>
@@ -690,6 +692,14 @@ function vTasks() {
 }
 
 /* ---------- habits ---------- */
+/* ---- days counted from the start: today is «День N» ---- */
+const PERIOD = 28; // four weeks per page, so weeks line up across pages
+const dayNo = (k) => diffDays(parse(D.start), parse(k)) + 1;
+const curPeriod = () => Math.max(0, Math.floor((dayNo(dkey(today())) - 1) / PERIOD));
+function periodNav(p) {
+  const a = p * PERIOD + 1, b = a + PERIOD - 1;
+  return `<div class="mnav"><button class="ib" data-act="hper" data-d="-1" ${p === 0 ? 'disabled style="opacity:.3"' : ''} aria-label="Предыдущие 28 дней">${ICON.left}</button><b>Дни ${a}–${b}</b><button class="ib" data-act="hper" data-d="1" aria-label="Следующие 28 дней">${ICON.right}</button></div>`;
+}
 function weeksOfMonth(y, m) {
   const n = dim(y, m), out = [];
   let cur = null;
@@ -701,17 +711,21 @@ function weeksOfMonth(y, m) {
   return out;
 }
 function vHabits() {
-  const y = UI.month.getFullYear(), m = UI.month.getMonth(), n = dim(y, m);
+  if (UI.hPeriod == null) UI.hPeriod = curPeriod();
+  const P = UI.hPeriod, n = PERIOD;
   const tk = dkey(today());
-  const weeks = weeksOfMonth(y, m);
-  const keys = []; for (let i = 1; i <= n; i++) keys.push(dkey(new Date(y, m, i)));
+  const p0 = addDays(parse(D.start), P * PERIOD);
+  const keys = []; for (let i = 0; i < n; i++) keys.push(dkey(addDays(p0, i)));
+  // weeks of 7 days from day 1: Неделя 1 = days 1–7, Неделя 2 = days 8–14, …
+  const weeks = [0, 1, 2, 3].map((w) => ({ no: P * 4 + w + 1, start: keys[w * 7], days: keys.slice(w * 7, w * 7 + 7).map(dayNo) }));
+  const today0 = dayNo(tk);
   const hs = D.habits.filter((h) => h.type === 'daily' && aliveIn(h, keys[0], keys[n - 1]));
   const cnt = keys.filter(counts);
   let head1 = '<tr class="wk"><th class="nm" rowspan="2" scope="col">Привычка</th>';
-  weeks.forEach((w, i) => (head1 += `<th colspan="${w.days.length}" class="${i % 2 ? 'alt' : ''}">${w.days.length >= 3 ? 'Неделя ' + (i + 1) : (i + 1)}</th>`));
-  head1 += '<th class="tot" rowspan="2" scope="col">За месяц</th></tr>';
+  weeks.forEach((w, i) => (head1 += `<th colspan="7" class="${i % 2 ? 'alt' : ''}">Неделя ${w.no}</th>`));
+  head1 += '<th class="tot" rowspan="2" scope="col">Итого</th></tr>';
   let head2 = '<tr>';
-  keys.forEach((k, i) => (head2 += `<th class="${k === tk ? 'today' : ''}" data-day="${k}">${WD[wdi(parse(k))]}<br>${i + 1}</th>`));
+  keys.forEach((k) => { const d = parse(k); head2 += `<th class="${k === tk ? 'today' : ''}" data-day="${k}" title="${fmtDate(k)}"><b style="color:var(--fg);font-size:13px">${dayNo(k)}</b><br><span style="font-size:10px;font-weight:500">${WD[wdi(d)]} ${d.getDate()}</span></th>`; });
   head2 += '</tr>';
   let body = '', totalDone = 0, possible = 0;
   hs.forEach((h) => {
@@ -742,34 +756,34 @@ function vHabits() {
 
   // weekly
   const wh = D.habits.filter((h) => h.type === 'weekly' && aliveIn(h, keys[0], keys[n - 1]));
-  let wt = `<table class="hg"><thead><tr class="wk"><th class="nm" scope="col">Привычка</th>${weeks.map((w, i) => `<th class="${i % 2 ? 'alt' : ''}">Нед. ${i + 1}</th>`).join('')}</tr><tr><th class="nm" style="background:var(--card-2)"></th>${weeks.map((w) => `<th>${w.days[0]}–${w.days[w.days.length - 1]}</th>`).join('')}</tr></thead><tbody>`;
-  const curMon = dkey(monday(today()));
+  let wt = `<table class="hg"><thead><tr class="wk"><th class="nm" scope="col">Привычка</th>${weeks.map((w, i) => `<th class="${i % 2 ? 'alt' : ''}">Нед. ${w.no}</th>`).join('')}</tr><tr><th class="nm" style="background:var(--card-2)"></th>${weeks.map((w) => `<th>дни ${w.days[0]}–${w.days[6]}</th>`).join('')}</tr></thead><tbody>`;
+  const curMon = keys[0] <= tk ? weeks.filter((w) => w.start <= tk).pop().start : '';
   wh.forEach((h) => {
     wt += `<tr><th class="nm" scope="row"><button data-act="habit-edit" data-id="${h.id}">${esc(h.emoji || '')} ${esc(h.name)}</button></th>`;
-    weeks.forEach((w) => { const k = 'W:' + w.mon; const on = hDone(k, h.id); wt += `<td class="${w.mon === curMon ? 'today' : ''}"><button class="cellbtn" data-act="hd" data-h="${h.id}" data-k="${k}" ${w.mon > curMon ? 'disabled' : ''} aria-label="${esc(h.name)}, неделя с ${fmtDate(w.mon)}">${cb(on)}</button></td>`; });
+    weeks.forEach((w) => { const k = 'W:' + w.start; const on = hDone(k, h.id); wt += `<td class="${w.start === curMon ? 'today' : ''}"><button class="cellbtn" data-act="hd" data-h="${h.id}" data-k="${k}" ${w.start > tk ? 'disabled' : ''} aria-label="${esc(h.name)}, неделя ${w.no}">${cb(on)}</button></td>`; });
     wt += '</tr>';
   });
   wt += '</tbody></table>';
   // monthly
   const mh = D.habits.filter((h) => h.type === 'monthly' && aliveIn(h, keys[0], keys[n - 1]));
-  const mk = 'M:' + mkey(UI.month);
-  const mFuture = mkey(UI.month) > mkey(today());
+  const mk = 'M:' + mkey(today());
+  const mFuture = false;
   const mDone = mh.filter((h) => hDone(mk, h.id)).length;
 
   return `
-  <div class="head"><div><h1 class="title">Трекер привычек</h1><div class="sub">Отмечай каждый день — проценты посчитаются сами</div></div>${monthNav()}</div>
+  <div class="head"><div><h1 class="title">День ${today0}</h1><div class="sub">Трекер привычек · старт ${fmtDate(D.start)}</div></div>${periodNav(P)}</div>
   <div class="grid g3" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
-    <div class="card card-b stat"><div class="v">${totalDone} / ${possible}</div><div class="l">Прогресс за месяц</div><div class="bar" style="margin-top:8px"><i style="width:${pct(totalDone, possible)}%"></i></div></div>
+    <div class="card card-b stat"><div class="v">${totalDone} / ${possible}</div><div class="l">Прогресс за дни ${P * PERIOD + 1}–${P * PERIOD + PERIOD}</div><div class="bar" style="margin-top:8px"><i style="width:${pct(totalDone, possible)}%"></i></div></div>
     <div class="card card-b stat"><div class="v">${pct(totalDone, possible)}%</div><div class="l">Выполнение ежедневных</div></div>
     <div class="card card-b stat"><div class="v">${hs.length ? bestHabit(hs, cnt) : '—'}</div><div class="l">Самая стабильная</div></div>
   </div>
-  <section class="card"><div class="card-h pink">${MONTHS[m]} — ежедневные привычки<button class="btn sm soft" data-act="habit-add" data-type="daily">${ICON.plus}Привычка</button></div>
+  <section class="card"><div class="card-h pink">Ежедневные привычки<button class="btn sm soft" data-act="habit-add" data-type="daily">${ICON.plus}Привычка</button></div>
     ${hs.length ? `<div class="hscroll" id="hscroll"><table class="hg"><thead>${head1}${head2}</thead><tbody>${body}</tbody><tfoot>${f1}${f2}${f3}</tfoot></table></div>` : '<div class="empty">Добавь первую привычку</div>'}
   </section>
   <div class="grid g21 mt">
     <section class="card"><div class="card-h blue">Еженедельные привычки<button class="btn sm soft" data-act="habit-add" data-type="weekly">${ICON.plus}Привычка</button></div>
       ${wh.length ? `<div class="hscroll">${wt}</div>` : '<div class="empty">Нет еженедельных привычек</div>'}</section>
-    <section class="card"><div class="card-h green">Ежемесячные привычки<span class="x">${mDone}/${mh.length}</span></div>
+    <section class="card"><div class="card-h green">Ежемесячные · ${MONTHS[today().getMonth()]}<span class="x">${mDone}/${mh.length}</span></div>
       <div class="list">${mh.map((h) => `<div class="li"><button data-act="hd" data-h="${h.id}" data-k="${mk}" ${mFuture ? 'disabled' : ''} aria-label="${esc(h.name)}">${cb(hDone(mk, h.id))}</button><button class="t" data-act="habit-edit" data-id="${h.id}"><span class="n">${esc(h.emoji || '')} ${esc(h.name)}</span></button><span></span></div>`).join('') || '<div class="empty">Нет ежемесячных привычек</div>'}</div>
       <div class="card-b" style="padding-top:6px"><button class="btn sm soft" data-act="habit-add" data-type="monthly">${ICON.plus}Привычка</button></div></section>
   </div>`;
@@ -1036,6 +1050,7 @@ document.addEventListener('click', (e) => {
     case 'hd': toggleHabit(el.dataset.k, el.dataset.h); render(); break;
     case 'rb': toggleBlock(el.dataset.k, id); render(); break;
     case 'rday': UI.rDay = +el.dataset.v; render(); break;
+    case 'hper': UI.hPeriod = Math.max(0, (UI.hPeriod || 0) + +el.dataset.d); render(); break;
     case 'rweek': UI.rWeek = addDays(UI.rWeek, 7 * +el.dataset.d); render(); break;
     case 'task-done': { const t = D.tasks.find((x) => x.id === id); if (t) { t.done = !t.done; t.doneAt = t.done ? dkey(today()) : null; save(); render(); } break; }
     case 'task-edit': editTask(id); break;
