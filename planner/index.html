@@ -433,6 +433,22 @@ function save() {
 }
 save();
 if (D.setup !== SETUP_ID) applySetup();
+/* Fresh start (26 Nov 2026), once per device: clears tasks and all habit/routine ticks and counts from today.
+   Habits and the routine themselves stay as they are. The empty task list is marked unsent,
+   so the next sync clears the Google Sheet too instead of pulling the old tasks back. */
+const RESET_ID = 'reset-2026-11-26';
+if (D.reset !== RESET_ID) {
+  const day0 = dkey(today());
+  D.start = day0;
+  D.tasks = [];
+  D.hlog = {};
+  D.rlog = {};
+  D.habits.forEach((h) => { if (!h.to) h.from = day0; });
+  Object.values(D.routine).forEach((list) => list.forEach((b) => { if (!b.to) b.from = day0; }));
+  D.reset = RESET_ID;
+  save();
+  try { localStorage.setItem('planner.syncDirty', '1'); } catch (e) {}
+}
 
 /* ================= UI state ================= */
 const now0 = today();
