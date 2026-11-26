@@ -60,6 +60,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("date", nargs="?", help="YYYY-MM-DD (default: today, account time)")
     ap.add_argument("--out", default=".")
+    ap.add_argument("--from", dest="date_from", help="YYYY-MM-DD: report a period from this date to <date>")
     ap.add_argument("--trips", action="append", default=[],
                     help="extra trips CSV (e.g. parsed from Ashley invoices); a trip found here replaces "
                          "the same trip's rows in moysklad/trips.csv")
@@ -67,7 +68,7 @@ def main():
     day = args.date or datetime.date.today().isoformat()
 
     orders = get_all("/entity/customerorder", limit=100,
-                     filter=f"moment>={day} 00:00:00;moment<={day} 23:59:59",
+                     filter=f"moment>={args.date_from or day} 00:00:00;moment<={day} 23:59:59",
                      expand="agent,owner,positions.assortment")
 
     items = collections.OrderedDict()
@@ -147,7 +148,7 @@ def main():
 
     rows = sorted(items.values(), key=lambda x: (x["folder"], x["name"]))
     os.makedirs(args.out, exist_ok=True)
-    path = os.path.join(args.out, f"ashley_plan_{day}.csv")
+    path = os.path.join(args.out, f"ashley_plan_{args.date_from + '_' if args.date_from else ''}{day}.csv")
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f, delimiter=";")
         w.writerow(["Code", "Название", "Продано", "Доступно", "В пути, qty", "Trip", "Дата", "Источник", "Заказы покупателей"])
@@ -159,7 +160,7 @@ def main():
                            [f"{t['qty']:g}" if t["trip"] else "0", t["trip"], t["eta"], t["src"],
                             "; ".join(it["orders"]) if i == 0 else ""])
 
-    print(f"Ashley заказ план | дата продаж: {day} | заказов покупателей: {len(orders)} | позиций Ashley: {len(rows)} | CSV: {path}")
+    print(f"Ashley заказ план | дата продаж: {(args.date_from + '..') if args.date_from else ''}{day} | заказов покупателей: {len(orders)} | позиций Ashley: {len(rows)} | CSV: {path}")
     for it in rows:
         tr = "; ".join(f"{t['qty']:g} шт trip {t['trip']} ~{t['eta']}" for t in it["transit"]) or "—"
         print(f"{it['article']} | {it['name']} | продано {it['qty']:g} | доступно {it['available']:g} | в пути: {tr}")
