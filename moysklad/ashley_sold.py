@@ -89,6 +89,8 @@ def main():
             it = items.setdefault(key, {"article": key, "name": a["name"], "qty": 0, "orders": [],
                                         "href": prod["meta"]["href"], "folder": prod.get("pathName", "")})
             it["qty"] += p["quantity"]
+            if comps:
+                it["components"] = [(c["assortment"]["meta"]["href"].split("?")[0], c["quantity"]) for c in comps]
             it["orders"].append(f"{o['name']} ({o.get('agent', {}).get('name', '')})")
 
     # stock per product
@@ -144,6 +146,11 @@ def main():
     for it in items.values():
         s = stock.get(it["href"], {})
         it["available"] = s.get("stock", 0) - s.get("reserve", 0)
+        if it.get("components"):  # bundle (e.g. modular sofa "8614055/56"): no own stock -> sets buildable from parts
+            def avail(h):
+                r = stock.get(h, {})
+                return r.get("stock", 0) - r.get("reserve", 0)
+            it["available"] = max(0, min(avail(h) // q for h, q in it["components"] if q))
         it["transit"] = transit.get(it["href"], []) + transit.get("art:" + str(it["article"]).upper(), [])
 
     rows = sorted(items.values(), key=lambda x: (x["folder"], x["name"]))
