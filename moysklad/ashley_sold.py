@@ -143,6 +143,14 @@ def main():
                 {"trip": trip, "qty": float(r.get("qty") or 0), "eta": (r.get("eta") or "").strip(),
                  "src": "инвойс Ashley"})
 
+    # ETA overrides from the manager's delivery table (moysklad/trip_eta.csv)
+    eta_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trip_eta.csv")
+    if os.path.exists(eta_file):
+        with open(eta_file, encoding="utf-8-sig") as f:
+            over = {r["trip"].strip(): r["eta"].strip() for r in csv.DictReader(f, delimiter=";")}
+        for lst in transit.values():
+            for t in lst:
+                if t["trip"] in over: t["eta"] = over[t["trip"]]
     for it in items.values():
         s = stock.get(it["href"], {})
         it["available"] = s.get("stock", 0) - s.get("reserve", 0)
