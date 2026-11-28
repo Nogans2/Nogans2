@@ -24,9 +24,10 @@ def parse(pdf):
         m = re.search(r"^\s*(\d\d)/(\d\d)/(\d{4})\s+\d+\s+\$", l)
         if m:
             inv_date = datetime.date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
-        m = re.search(r"\s(\d{4,})\s+\d\d\s+\d{2,4}\s*$", l)  # "... 40HC   037823 01 335"
-        if m and "C" in l.split()[0]:
-            trip = m.group(1).lstrip("0")
+        # "C473035  CBD  40HC  037823 01 335"  or  "C073867  CBD  40HC  025277  335"
+        m = re.match(r"^\s*[A-Z]\d{5,}\s.*?\s0*(\d{4,6})(?:\s+\d\d)?\s+\d{2,4}\s*$", l)
+        if m:
+            trip = m.group(1)
         m = re.search(r"AMOUNT DUE \(USD\)\s+\$\s*([\d,]+\.\d\d)", l)
         if m:
             due[inv] = float(m.group(1).replace(",", ""))
